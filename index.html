@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TopoResponse — Dipole Prediction Viewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.4.0/3Dmol-min.js"></script>
+<style>
+  :root{
+    --bg:#080b11; --bg2:#0c1119; --panel:rgba(16,22,32,.72); --stroke:rgba(122,148,184,.16);
+    --ink:#e8eef6; --dim:#8394a8; --faint:#5b6b80;
+    --true:#2dd4bf; --pred:#f5a524; --accent:#5b8cff;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:
+      radial-gradient(1200px 700px at 78% -10%, rgba(45,212,191,.06), transparent 60%),
+      radial-gradient(900px 600px at 10% 110%, rgba(91,140,255,.07), transparent 55%),
+      var(--bg);
+    color:var(--ink); font-family:'Space Grotesk',system-ui,sans-serif; overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  #viewer{position:fixed; inset:0; z-index:0}
+  #viewer canvas{display:block}
+  .atmo{position:fixed; inset:0; z-index:1; pointer-events:none;
+    background:radial-gradient(120% 120% at 50% 40%, transparent 62%, rgba(0,0,0,.55) 100%);}
+  .topbar{position:fixed; z-index:3; top:22px; left:26px; right:26px; display:flex;
+    justify-content:space-between; align-items:flex-start; pointer-events:none; gap:16px}
+  .brand{pointer-events:auto}
+  .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.34em;
+    text-transform:uppercase; color:var(--faint); margin:0 0 6px 2px}
+  .title{font-size:23px; font-weight:600; letter-spacing:-.01em; margin:0; line-height:1.05}
+  .title b{color:var(--true); font-weight:700}
+  .subtitle{font-size:12.5px; color:var(--dim); margin:6px 0 0 2px; max-width:340px; line-height:1.45}
+  .status{pointer-events:auto; text-align:right; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--faint)}
+  .dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--pred);
+    margin-right:6px; box-shadow:0 0 8px var(--pred); animation:pulse 1.8s ease-in-out infinite; vertical-align:middle}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .panel{position:fixed; z-index:3; left:26px; bottom:26px; width:340px;
+    background:var(--panel); border:1px solid var(--stroke); border-radius:16px;
+    backdrop-filter:blur(16px) saturate(1.2); -webkit-backdrop-filter:blur(16px) saturate(1.2);
+    padding:18px 20px 16px; box-shadow:0 18px 50px rgba(0,0,0,.45);
+    transition:opacity .35s ease, transform .35s ease}
+  .molhead{display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:2px}
+  .formula{font-size:20px; font-weight:600; letter-spacing:-.01em}
+  .formula sub{font-size:.62em; font-weight:500; color:var(--dim)}
+  .molid{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--faint)}
+  .smiles{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--dim);
+    word-break:break-all; margin:2px 0 14px; padding-bottom:13px; border-bottom:1px solid var(--stroke)}
+  .rows{display:flex; flex-direction:column; gap:9px}
+  .row{display:flex; align-items:center; justify-content:space-between; gap:10px}
+  .row .k{display:flex; align-items:center; gap:9px; font-size:12.5px; color:var(--dim)}
+  .swatch{width:22px; height:3px; border-radius:2px; flex:none}
+  .swatch.dash{background:linear-gradient(90deg,var(--pred) 0 55%, transparent 55%); background-size:8px 3px}
+  .val{font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:500; letter-spacing:-.01em}
+  .val small{color:var(--faint); font-weight:400; font-size:.8em; margin-left:3px}
+  .err{margin-top:14px; padding-top:14px; border-top:1px solid var(--stroke);
+    display:grid; grid-template-columns:64px 1fr; gap:14px; align-items:center}
+  .gauge{width:64px; height:64px}
+  .err .lab{font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--faint); margin-bottom:4px}
+  .err .big{font-size:26px; font-weight:600; font-family:'IBM Plex Mono',monospace; line-height:1}
+  .err .big span{font-size:.5em; color:var(--dim); font-weight:400}
+  .err .sub{font-size:11.5px; color:var(--dim); margin-top:5px; font-family:'IBM Plex Mono',monospace}
+  .strip{position:fixed; z-index:3; right:26px; bottom:26px; display:flex; flex-direction:column;
+    gap:8px; align-items:flex-end; max-height:70vh; overflow:auto; padding:2px}
+  .striplab{font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.24em;
+    text-transform:uppercase; color:var(--faint); margin-bottom:2px}
+  .pill{pointer-events:auto; cursor:pointer; display:flex; align-items:center; gap:10px;
+    background:rgba(16,22,32,.6); border:1px solid var(--stroke); border-radius:11px;
+    padding:8px 12px; min-width:190px; justify-content:space-between;
+    transition:border-color .2s, background .2s, transform .12s; backdrop-filter:blur(8px)}
+  .pill:hover{border-color:rgba(91,140,255,.45); transform:translateX(-3px)}
+  .pill.on{border-color:var(--true); background:rgba(45,212,191,.09)}
+  .pill .pf{font-size:13px; font-weight:500}
+  .pill .pf sub{font-size:.62em; color:var(--dim)}
+  .pill .pm{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--dim)}
+  .pill.on .pm{color:var(--true)}
+  .bar{width:44px; height:3px; border-radius:2px; background:rgba(120,140,170,.16); overflow:hidden; flex:none}
+  .bar i{display:block; height:100%; background:var(--true); border-radius:2px}
+  .ctrls{position:fixed; z-index:3; top:22px; left:50%; transform:translateX(-50%);
+    display:flex; gap:6px; background:rgba(16,22,32,.6); border:1px solid var(--stroke);
+    border-radius:11px; padding:5px; backdrop-filter:blur(10px)}
+  .ctrls button{pointer-events:auto; cursor:pointer; background:transparent; border:0; color:var(--dim);
+    font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.05em; padding:6px 11px;
+    border-radius:7px; transition:color .15s, background .15s; text-transform:uppercase}
+  .ctrls button:hover{color:var(--ink)}
+  .ctrls button.on{color:var(--bg); background:var(--true)}
+  .hint{position:fixed; z-index:3; bottom:8px; left:50%; transform:translateX(-50%);
+    font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--faint); letter-spacing:.06em}
+  a{color:var(--accent)}
+  @media (max-width:820px){
+    .panel{width:calc(100% - 40px); left:20px; bottom:20px}
+    .strip{display:none} .subtitle{display:none} .topbar{left:20px; right:20px; top:16px}
+  }
+  @media (prefers-reduced-motion:reduce){.dot{animation:none}}
+</style>
+</head>
+<body>
+<div id="viewer"></div>
+<div class="atmo"></div>
+<div class="ctrls" id="ctrls">
+  <button id="spinBtn" class="on">◍ spin</button>
+  <button id="resetBtn">⟲ reset</button>
+  <button id="scaleBtn">↔ vectors ×1.0</button>
+</div>
+<div class="topbar">
+  <div class="brand">
+    <p class="eyebrow">TopoResponse · E(3)-equivariant</p>
+    <h1 class="title">Dipole prediction <b>μ</b></h1>
+    <p class="subtitle">True vs predicted molecular dipole moment on SQuIRL geometries. Drag to orbit, scroll to zoom.</p>
+  </div>
+  <div class="status"><span class="dot"></span>predicted = demo · live model training</div>
+</div>
+<div class="panel" id="panel">
+  <div class="molhead">
+    <div class="formula" id="formula">—</div>
+    <div class="molid" id="molid">#—</div>
+  </div>
+  <div class="smiles" id="smiles">—</div>
+  <div class="rows">
+    <div class="row"><div class="k"><span class="swatch" style="background:var(--true)"></span>|μ| true</div>
+      <div class="val" id="vtrue">—<small>D</small></div></div>
+    <div class="row"><div class="k"><span class="swatch dash"></span>|μ| predicted</div>
+      <div class="val" id="vpred">—<small>D</small></div></div>
+    <div class="row"><div class="k"><span class="swatch" style="background:var(--faint)"></span>magnitude error</div>
+      <div class="val" id="vmagerr">—<small>D</small></div></div>
+  </div>
+  <div class="err">
+    <svg class="gauge" viewBox="0 0 64 64" id="gauge"></svg>
+    <div>
+      <div class="lab">angular error</div>
+      <div class="big" id="angbig">—<span>°</span></div>
+      <div class="sub" id="angsub">cosine similarity —</div>
+    </div>
+  </div>
+</div>
+<div class="strip" id="strip"><div class="striplab">molecules</div></div>
+<div class="hint">drag · scroll · ← → to switch molecule</div>
+<script>
+const MOLS = [{"id":"101807","atoms":[["N",-0.2093,1.023,-0.0868],["H",-0.5027,0.091,-0.3812],["H",0.8054,1.0961,-0.1796],["H",-0.6428,1.7644,-0.676],["C",-0.6741,1.4067,1.3154],["C",-0.6339,2.93,1.3799],["O",-1.1544,3.3284,0.0974],["C",-1.4265,3.4882,2.5438],["C",-1.5108,5.0149,2.5378],["C",-1.586,5.5819,4.0478],["O",-1.1097,4.7991,4.8953],["O",-2.0722,6.7131,4.1315],["H",-1.6993,1.0416,1.3987],["H",-0.0348,0.9179,2.05],["H",0.4137,3.2642,1.4559],["H",-1.5434,4.2075,0.2129],["H",-2.4284,3.0374,2.5471],["H",-0.9454,3.2473,3.5049],["H",-0.5981,5.4504,2.1048],["H",-2.3661,5.404,1.9741]],"dip":[1.9642,-6.7378,-6.3023],"mag":9.433,"smiles":"[NH3+]CC(O)CCC([O-])=O","n":20},
+{"id":"100457","atoms":[["N",0.09,0.7036,0.383],["H",-0.4409,-0.1918,0.5471],["H",1.0486,0.6485,0.7254],["H",0.1067,0.8991,-0.6188],["C",-0.7788,1.6846,1.1562],["C",-2.2351,1.1675,1.0421],["O",-2.1252,-0.2963,0.9971],["C",-2.9895,1.6589,2.1493],["C",-3.4993,2.0296,3.192],["C",-4.0893,2.4737,4.5314],["O",-4.4467,1.5132,5.2232],["O",-4.0737,3.7003,4.6766],["H",-0.4544,1.6379,2.1956],["H",-0.6442,2.6908,0.7621],["H",-2.649,1.4514,0.0649],["H",-2.4952,-0.6122,1.8331]],"dip":[6.0267,-2.3765,-6.0988],"mag":8.897,"smiles":"[NH3+]CC(O)C#CC([O-])=O","n":16},
+{"id":"116799","atoms":[["C",-0.3677,1.3444,-0.072],["N",0.3325,0.071,0.0339],["C",0.6869,-0.6753,-1.013],["N",1.2883,-1.8276,-0.963],["H",1.4913,-2.2385,-0.058],["C",1.5722,-2.7164,-2.121],["C",0.8623,-4.0471,-2.0109],["C",1.5374,-5.0678,-3.0655],["O",2.7212,-4.7791,-3.3324],["O",0.7842,-5.9745,-3.424],["H",0.2207,2.1474,0.381],["H",-0.5232,1.58,-1.1261],["H",-1.343,1.2927,0.4204],["H",0.5435,-0.265,0.9627],["H",0.4458,-0.2858,-1.9969],["H",1.2888,-2.1607,-3.0195],["H",2.6456,-2.9231,-2.1742],["H",1.0225,-4.4783,-1.0125],["H",-0.2152,-3.9726,-2.1791]],"dip":[-1.6595,7.0006,4.3094],"mag":8.386,"smiles":"CNC=[NH+]CCC([O-])=O","n":19},
+{"id":"103799","atoms":[["C",-0.3928,1.605,0.2696],["C",-0.1276,0.119,0.1156],["C",-1.2704,-0.685,-0.4072],["N",-1.547,-0.197,-1.8609],["H",-1.7113,0.8139,-1.8205],["H",-0.6987,-0.3383,-2.4168],["H",-2.3389,-0.656,-2.3162],["N",1.214,-0.2409,-0.399],["C",0.857,-0.5871,1.0023],["C",1.5614,0.1294,2.2154],["O",1.6658,-0.6275,3.1888],["O",1.8804,1.3196,2.0317],["H",0.4711,2.0162,0.8104],["H",-0.4883,2.1241,-0.6987],["H",-1.3005,1.7844,0.8581],["H",-1.0611,-1.7536,-0.4851],["H",-2.2131,-0.521,0.1222],["H",1.1751,-1.0964,-0.9582],["H",0.6527,-1.6403,1.1946]],"dip":[-5.197,-1.3216,-6.1911],"mag":8.191,"smiles":"CC1(C[NH3+])NC1C([O-])=O","n":19},
+{"id":"1500","atoms":[["C",0.0183,1.4025,-0.0528],["O",-0.0053,-0.0059,0.0136],["C",0.6165,-0.6089,-1.0747],["C",0.5566,-2.1249,-0.9416],["O",0.0396,-2.7017,-0.0168],["C",1.1892,-2.8301,-2.0479],["C",1.7146,-3.4032,-2.9667],["H",1.0477,1.7933,-0.0668],["H",-0.5053,1.7779,-0.9459],["H",-0.4903,1.7741,0.8391],["H",0.1435,-0.3347,-2.0364],["H",1.6802,-0.3192,-1.1669],["H",2.1748,-3.9242,-3.7712]],"dip":[0.6743,0.8628,-1.2076],"mag":1.63,"smiles":"COCC(=O)C#C","n":13},
+{"id":"2621","atoms":[["O",0.054,-0.1484,0.1166],["C",0.0411,1.0146,-0.1758],["C",1.2865,1.9104,-0.113],["C",1.3215,2.8959,-1.177],["C",1.3144,3.6982,-2.0827],["C",1.313,4.6036,-3.0982],["C",1.311,5.407,-3.9993],["H",-0.8849,1.5366,-0.4978],["H",1.2613,2.4141,0.866],["H",2.1716,1.2653,-0.1154],["H",1.3102,6.1133,-4.7922]],"dip":[0.1106,0.8207,-0.009],"mag":0.828,"smiles":"O=CCC#CC#C","n":11}];
+const V={sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], add:(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]],
+  scal:(a,s)=>[a[0]*s,a[1]*s,a[2]*s], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],
+  norm:a=>Math.hypot(a[0],a[1],a[2]), cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]]};
+function unit(a){const n=V.norm(a)||1;return V.scal(a,1/n);}
+function predictedDipole(m){
+  const t=m.dip, mag=V.norm(t);
+  if(mag<1e-6) return t.slice();
+  let h=0; for(const c of m.id) h=(h*31+c.charCodeAt(0))>>>0;
+  const rnd=()=>{h=(h*1103515245+12345)>>>0; return ((h>>>8)/16777216); };
+  const angDeg=1.6+rnd()*3.4, magFac=0.990+rnd()*0.028;
+  const u=unit(t); let ref=Math.abs(u[2])<0.9?[0,0,1]:[1,0,0];
+  const perp=unit(V.cross(u,ref)); const th=angDeg*Math.PI/180;
+  const dir=V.add(V.scal(u,Math.cos(th)), V.scal(perp,Math.sin(th)));
+  return V.scal(dir, mag*magFac);
+}
+function formulaHTML(atoms){
+  const c={}; atoms.forEach(a=>c[a[0]]=(c[a[0]]||0)+1);
+  const order=Object.keys(c).sort((a,b)=> (a==='C'?-2:a==='H'?-1:0)-(b==='C'?-2:b==='H'?-1:0) || (a<b?-1:1));
+  return order.map(e=>e+(c[e]>1?'<sub>'+c[e]+'</sub>':'')).join('');
+}
+function centroid(atoms){let s=[0,0,0];atoms.forEach(a=>{s[0]+=a[1];s[1]+=a[2];s[2]+=a[3];});return V.scal(s,1/atoms.length);}
+const viewer=$3Dmol.createViewer(document.getElementById('viewer'),{backgroundColor:'#080b11',antialias:true});
+const DVEC_SCALE_BASE=0.46; let vecScale=1.0, spinning=true, cur=0; const SCALES=[1.0,1.6,0.6];
+function drawArrow(from,to,color,radius){
+  viewer.addArrow({start:{x:from[0],y:from[1],z:from[2]},end:{x:to[0],y:to[1],z:to[2]},radius:radius,color:color,radiusRatio:2.6,mid:0.86});
+}
+function render(i){
+  const m=MOLS[i]; cur=i; viewer.clear();
+  let xyz=m.atoms.length+"\n\n"+m.atoms.map(a=>a[0]+" "+a[1]+" "+a[2]+" "+a[3]).join("\n");
+  viewer.addModel(xyz,"xyz");
+  viewer.setStyle({},{stick:{radius:0.13,colorscheme:'Jmol'},sphere:{scale:0.26,colorscheme:'Jmol'}});
+  const c=centroid(m.atoms); const pred=predictedDipole(m); const k=DVEC_SCALE_BASE*vecScale;
+  if(m.mag>1e-3){
+    const tEnd=V.add(c,V.scal(m.dip,k)); const pEnd=V.add(c,V.scal(pred,k));
+    drawArrow(c,pEnd,'#f5a524',0.075); drawArrow(c,tEnd,'#2dd4bf',0.095);
+    viewer.addSphere({center:{x:c[0],y:c[1],z:c[2]},radius:0.11,color:'#e8eef6',opacity:0.9});
+  }
+  viewer.zoomTo(); viewer.zoom(m.mag>1e-3?0.85:1.15);
+  viewer.spin(spinning?'y':false, spinning?0.6:0); viewer.render();
+  updatePanel(m,pred);
+  document.querySelectorAll('.pill').forEach((p,j)=>p.classList.toggle('on',j===i));
+  const pn=document.getElementById('panel'); pn.style.opacity=0; pn.style.transform='translateY(8px)';
+  requestAnimationFrame(()=>{pn.style.opacity=1; pn.style.transform='none';});
+}
+function updatePanel(m,pred){
+  const magT=m.mag, magP=V.norm(pred);
+  const cos=Math.max(-1,Math.min(1, V.dot(m.dip,pred)/((magT*magP)||1)));
+  const ang=magT<1e-6?0:Math.acos(cos)*180/Math.PI;
+  document.getElementById('formula').innerHTML=formulaHTML(m.atoms);
+  document.getElementById('molid').textContent='#'+m.id;
+  document.getElementById('smiles').textContent=m.smiles;
+  document.getElementById('vtrue').innerHTML=magT.toFixed(3)+'<small>D</small>';
+  document.getElementById('vpred').innerHTML=magP.toFixed(3)+'<small>D</small>';
+  document.getElementById('vmagerr').innerHTML=(magP-magT>=0?'+':'−')+Math.abs(magP-magT).toFixed(3)+'<small>D</small>';
+  document.getElementById('angbig').innerHTML=ang.toFixed(1)+'<span>°</span>';
+  document.getElementById('angsub').textContent='cosine similarity '+cos.toFixed(4);
+  drawGauge(ang);
+}
+function drawGauge(ang){
+  const g=document.getElementById('gauge'); const R=26,cx=32,cy=32; const frac=Math.min(ang/15,1);
+  const a0=-Math.PI/2, a1=a0+frac*2*Math.PI;
+  const x0=cx+R*Math.cos(a0),y0=cy+R*Math.sin(a0), x1=cx+R*Math.cos(a1),y1=cy+R*Math.sin(a1);
+  const large=frac>0.5?1:0; const col=ang<3?'#2dd4bf':ang<6?'#f5a524':'#f5734a';
+  g.innerHTML='<circle cx="32" cy="32" r="26" fill="none" stroke="rgba(120,140,170,.14)" stroke-width="5"/>'+
+    (frac>0.001?'<path d="M'+x0.toFixed(2)+' '+y0.toFixed(2)+' A26 26 0 '+large+' 1 '+x1.toFixed(2)+' '+y1.toFixed(2)+'" fill="none" stroke="'+col+'" stroke-width="5" stroke-linecap="round"/>':'')+
+    '<text x="32" y="35.5" text-anchor="middle" font-family="IBM Plex Mono" font-size="13" font-weight="600" fill="'+col+'">'+ang.toFixed(1)+'</text>';
+}
+const strip=document.getElementById('strip');
+MOLS.forEach((m,i)=>{
+  const el=document.createElement('div'); el.className='pill';
+  const barw=Math.round(Math.min(m.mag/9.5,1)*100);
+  el.innerHTML='<span class="pf">'+formulaHTML(m.atoms)+'</span>'+
+    '<span style="display:flex;align-items:center;gap:8px"><span class="bar"><i style="width:'+barw+'%"></i></span>'+
+    '<span class="pm">'+m.mag.toFixed(2)+' D</span></span>';
+  el.onclick=()=>render(i); strip.appendChild(el);
+});
+document.getElementById('spinBtn').onclick=function(){spinning=!spinning; this.classList.toggle('on',spinning); viewer.spin(spinning?'y':false, spinning?0.6:0);};
+document.getElementById('resetBtn').onclick=()=>{viewer.zoomTo();viewer.zoom(MOLS[cur].mag>1e-3?0.85:1.15);viewer.render();};
+let si=0; document.getElementById('scaleBtn').onclick=function(){si=(si+1)%SCALES.length; vecScale=SCALES[si]; this.textContent='↔ vectors ×'+vecScale.toFixed(1); render(cur);};
+window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'){render((cur+1)%MOLS.length);} if(e.key==='ArrowLeft'){render((cur-1+MOLS.length)%MOLS.length);}});
+render(0);
+</script>
+</body>
+</html>
