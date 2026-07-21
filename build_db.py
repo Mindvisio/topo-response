@@ -4,7 +4,7 @@ from schnetpack.data import ASEAtomsData
 H5='/home/yc-user/data/squirl/SQuIRL_v1.0.h5'
 idx=json.load(open('cache/index.json')); ids=[r['id'] for r in idx]
 if os.path.exists('cache/squirl.db'): os.remove('cache/squirl.db')
-db=ASEAtomsData.create('cache/squirl.db', distance_unit='Ang', property_unit_dict={'dipole_moment':'Debye','polarizability':'a.u.'})
+db=ASEAtomsData.create('cache/squirl.db', distance_unit='Ang', property_unit_dict={'dipole_moment':'a.u.','polarizability':'a.u.'})
 t0=time.time(); AL=[]; P=[]
 with h5py.File(H5,'r') as f:
     for k,mid in enumerate(ids):
