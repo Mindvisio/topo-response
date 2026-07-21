@@ -3,7 +3,7 @@ cd ~/topores
 SEED=0; EP=40
 echo "MATRIX START $(date)" > ~/mx_progress.log
 for split in topology_ood grouprandom; do
-  for cond in none tda shuffled random density; do
+  for cond in none tda shuffled random elem4d; do
     tag="${split}_${cond}_s${SEED}"
     echo "[$(date +%H:%M)] dipole $tag" >> ~/mx_progress.log
     ~/env/bin/python train_p3.py --split $split --cond $cond --seed $SEED --epochs $EP > ~/mx_dip_${tag}.log 2>&1
