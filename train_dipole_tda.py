@@ -33,7 +33,7 @@ class AddZPH(trn.Transform):
         inputs['zph']=self.zph[inputs[P.idx]]; return inputs
 def make_zph_transform(cond, split_file):
     if cond=='shuffled': return AddZPH('cache/zph.npy', split_file, shuffle_within=True)
-    path={'tda':'cache/zph.npy','random':'cache/zph_random.npy','density':'cache/zph_density.npy'}[cond]
+    path={'tda':'cache/zph.npy','random':'cache/zph_random.npy','elem4d':'cache/zph_elem4d.npy'}[cond]
     return AddZPH(path, split_file)
 class TDACondition(nn.Module):
     # irrep-preserving FiLM, IDENTITY-INIT (zero last layer): at init scale=shift=gate=0 -> output == baseline.

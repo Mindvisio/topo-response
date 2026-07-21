@@ -10,7 +10,7 @@ from train_dipole_tda import FlatMSE, FlatMAE, AddZPH, TDACondition, PaiNNWithTD
 NBASIS=128; DB='cache/squirl.db'; AU2D=2.541746
 ap=argparse.ArgumentParser()
 ap.add_argument('--ckpt', required=True); ap.add_argument('--split', default='topology_ood')
-ap.add_argument('--cond', default='none', choices=['none','tda','shuffled','random','density'])
+ap.add_argument('--cond', default='none', choices=['none','tda','shuffled','random','elem4d'])
 ap.add_argument('--cutoff', type=float, default=5.0); ap.add_argument('--cache', default='cache/nbh_cache')
 a=ap.parse_args(); use_cond=a.cond!='none'
 tfs=[trn.SubtractCenterOfGeometry(), trn.CachedNeighborList(cache_path='%s_cut%g'%(a.cache,a.cutoff), neighbor_list=trn.ASENeighborList(cutoff=a.cutoff), keep_cache=True), trn.CastTo32()]

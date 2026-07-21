@@ -34,14 +34,14 @@ def main():
     idx=json.load(open('cache/index.json')); ids=[r['id'] for r in idx]
     with h5py.File(H5,'r') as f:
         items=[(mid, np.asarray(f['data'][mid]['structure']['pos'][...]), np.asarray(f['data'][mid]['structure']['z'][...])) for mid in ids]
-    print('density z_PH FIXED grid 4D for %d mols, %d procs...'%(len(items),NPROC),flush=True)
+    print('element-augmented 4D VR z_PH FIXED grid 4D for %d mols, %d procs...'%(len(items),NPROC),flush=True)
     with Pool(NPROC, initializer=_init) as P:
         res=P.map(work, items, chunksize=200)
     order,vecs,fails=[],[],[]
     for mid,v in res:
         (fails if v is None else order).append(mid)
         if v is not None: vecs.append(v)
-    Z=np.stack(vecs).astype(np.float32); np.save('cache/zph_density.npy', Z)
-    json.dump(dict(order=order,dim=int(Z.shape[1]),n_fail=len(fails),grid='fixed_0_1_64',kind='Z-weighted-4D'), open('cache/zph_density_meta.json','w'))
-    print('density z_PH DONE fixed: %dx%d, %d fails'%(Z.shape[0],Z.shape[1],len(fails)),flush=True)
+    Z=np.stack(vecs).astype(np.float32); np.save('cache/zph_elem4d.npy', Z)
+    json.dump(dict(order=order,dim=int(Z.shape[1]),n_fail=len(fails),grid='fixed_0_1_64',kind='Z-weighted-4D'), open('cache/zph_elem4d_meta.json','w'))
+    print('element-augmented 4D VR z_PH DONE fixed: %dx%d, %d fails'%(Z.shape[0],Z.shape[1],len(fails)),flush=True)
 if __name__=='__main__': main()

@@ -10,10 +10,10 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from train_dipole_tda import FlatMSE, FlatMAE, AddZPH, TDACondition, PaiNNWithTDA, make_zph_transform
 NBASIS=128; DB='cache/squirl.db'
-ZPH={'tda':'cache/zph.npy','shuffled':'cache/zph_shuffled.npy','random':'cache/zph_random.npy','density':'cache/zph_density.npy'}
+ZPH={'tda':'cache/zph.npy','shuffled':'cache/zph_shuffled.npy','random':'cache/zph_random.npy','elem4d':'cache/zph_elem4d.npy'}
 ap=argparse.ArgumentParser()
 ap.add_argument('--split', default='topology_ood')
-ap.add_argument('--cond', default='tda', choices=['none','tda','shuffled','random','density'])
+ap.add_argument('--cond', default='tda', choices=['none','tda','shuffled','random','elem4d'])
 ap.add_argument('--cutoff', type=float, default=5.0)
 ap.add_argument('--cache', default='cache/nbh_cache')
 ap.add_argument('--epochs', type=int, default=60)

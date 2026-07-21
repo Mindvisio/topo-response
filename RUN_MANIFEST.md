@@ -10,7 +10,7 @@ See requirements.txt (torch 2.4.1+cu121, schnetpack 2.1.1, e3nn 0.6.0, giotto-td
 - SchNetPack ASE db + cached neighbor lists (cutoff 5.0 A).
 - Splits: topology-OOD (train <=1 ring 60659 / test >=2 rings 66485); group-random by canonical SMILES (107110/13387/13386, 0 cross-partition graph duplicates).
 - z_PH: geometric Vietoris-Rips H0/H1 on a FIXED [0,1] filtration grid -> Betti 64x2 + persistence entropy = 130-dim. md5 8f264761bb3fdfc4d498ddbb08b8a874
-- zph_density: Z-weighted 4D persistence (element-augmented 4D VR). md5 3ba65d84ce59056aafc5cbe0093e8564
+- zph_elem4d: Z-weighted 4D persistence (element-augmented 4D VR). md5 3ba65d84ce59056aafc5cbe0093e8564
 - split_topology_ood.npz md5 6db0af72bb7e7b52927650ebabb45b0c ; split_grouprandom.npz md5 df7ebbd523fd9aacd2dc37ccbfd2d361
 
 ## Audit fixes (all verified)
