@@ -1,15 +1,10 @@
-# data / caches / artifacts (regeneratable, not committed)
 cache/
-data/
-*.db
-*.npz
+ckpt*/
+runs*/
+logs/
 *.npy
-*.h5
-# training outputs
-ckpt/
-runs/
-lightning_logs/
+*.npz
+*.db
 *.ckpt
-# python
 __pycache__/
 *.pyc

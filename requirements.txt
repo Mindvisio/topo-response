@@ -1,0 +1,13 @@
+torch==2.4.1
+torchmetrics==1.9.0
+pytorch-lightning==2.6.5
+schnetpack==2.1.1
+e3nn==0.6.0
+torch-geometric==2.8.0
+torch-ema==0.3
+giotto-tda==0.6.0
+rdkit==2026.3.4
+ase==3.29.0
+h5py==3.16.0
+numpy==2.2.6
+scipy==1.15.3
