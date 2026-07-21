@@ -14,7 +14,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 DB='cache/squirl.db'; CUTOFF=5.0; NBASIS=128
 dm=AtomsDataModule(DB, batch_size=128, split_file='cache/split_random.npz', load_properties=['polarizability'],
-  transforms=[trn.SubtractCenterOfGeometry(), trn.CachedNeighborList(cache_path='cache/nbh_cache', neighbor_list=trn.ASENeighborList(cutoff=CUTOFF), keep_cache=True), trn.CastTo32()],
+  transforms=[trn.SubtractCenterOfGeometry(), trn.CachedNeighborList(cache_path='cache/nbh_cache_cut%g'%CUTOFF, neighbor_list=trn.ASENeighborList(cutoff=CUTOFF), keep_cache=True), trn.CastTo32()],
   num_workers=6, pin_memory=True)
 painn=PaiNN(n_atom_basis=NBASIS, n_interactions=3, radial_basis=spk.nn.GaussianRBF(n_rbf=20, cutoff=CUTOFF), cutoff_fn=spk.nn.CosineCutoff(CUTOFF))
 polar=Polarizability(n_in=NBASIS, polarizability_key='polarizability')

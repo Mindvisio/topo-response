@@ -54,7 +54,7 @@ class PaiNNWithTDA(nn.Module):
         super().__init__(); self.painn=painn; self.cond=cond
     def forward(self, inputs): return self.cond(self.painn(inputs))
 def build(use_tda, split_file='cache/split_random.npz'):
-    tfs=[trn.SubtractCenterOfGeometry(), trn.CachedNeighborList(cache_path='cache/nbh_cache', neighbor_list=trn.ASENeighborList(cutoff=CUTOFF), keep_cache=True), trn.CastTo32()]
+    tfs=[trn.SubtractCenterOfGeometry(), trn.CachedNeighborList(cache_path='cache/nbh_cache_cut%g'%CUTOFF, neighbor_list=trn.ASENeighborList(cutoff=CUTOFF), keep_cache=True), trn.CastTo32()]
     if use_tda: tfs.append(AddZPH('cache/zph.npy', split_file))
     dm=AtomsDataModule(DB, batch_size=128, split_file=split_file, load_properties=['dipole_moment'], transforms=tfs, num_workers=6, pin_memory=True)
     painn=PaiNN(n_atom_basis=NBASIS, n_interactions=3, radial_basis=spk.nn.GaussianRBF(n_rbf=20, cutoff=CUTOFF), cutoff_fn=spk.nn.CosineCutoff(CUTOFF))

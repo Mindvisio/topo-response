@@ -13,7 +13,7 @@ ap.add_argument('--ckpt', required=True); ap.add_argument('--split', default='to
 ap.add_argument('--cond', default='none', choices=['none','tda','shuffled','random','density'])
 ap.add_argument('--cutoff', type=float, default=5.0); ap.add_argument('--cache', default='cache/nbh_cache')
 a=ap.parse_args(); use_cond=a.cond!='none'
-tfs=[trn.SubtractCenterOfGeometry(), trn.CachedNeighborList(cache_path=a.cache, neighbor_list=trn.ASENeighborList(cutoff=a.cutoff), keep_cache=True), trn.CastTo32()]
+tfs=[trn.SubtractCenterOfGeometry(), trn.CachedNeighborList(cache_path='%s_cut%g'%(a.cache,a.cutoff), neighbor_list=trn.ASENeighborList(cutoff=a.cutoff), keep_cache=True), trn.CastTo32()]
 if use_cond: tfs.append(make_zph_transform(a.cond, 'cache/split_%s.npz'%a.split))
 dm=AtomsDataModule(DB, batch_size=256, split_file='cache/split_%s.npz'%a.split, load_properties=['polarizability'], transforms=tfs, num_workers=6); dm.setup()
 painn=PaiNN(n_atom_basis=NBASIS, n_interactions=3, radial_basis=spk.nn.GaussianRBF(n_rbf=20, cutoff=a.cutoff), cutoff_fn=spk.nn.CosineCutoff(a.cutoff))

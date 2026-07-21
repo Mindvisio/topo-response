@@ -14,7 +14,7 @@ def build(head):
     h=DipoleMoment(n_in=NBASIS,dipole_key='dipole_moment',use_vector_representation=True) if head=='dipole' else Polarizability(n_in=NBASIS,polarizability_key='polarizability')
     return NeuralNetworkPotential(representation=rep,input_modules=[PairwiseDistances()],output_modules=[h])
 def get_batch(k):
-    tfs=[trn.CachedNeighborList(cache_path='cache/nbh_cache',neighbor_list=trn.ASENeighborList(cutoff=CUTOFF),keep_cache=True),trn.CastTo32(),AddZPH('cache/zph.npy', 'cache/split_random.npz')]
+    tfs=[trn.CachedNeighborList(cache_path='cache/nbh_cache_cut%g'%CUTOFF,neighbor_list=trn.ASENeighborList(cutoff=CUTOFF),keep_cache=True),trn.CastTo32(),AddZPH('cache/zph.npy', 'cache/split_random.npz')]
     dm=AtomsDataModule('cache/squirl.db',batch_size=24,split_file='cache/split_random.npz',load_properties=[k],transforms=tfs,num_workers=2)
     dm.setup(); return next(iter(dm.train_dataloader()))
 def center_batch(b):

@@ -17,7 +17,7 @@ idx=json.load(open('cache/index.json')); ids=[r['id'] for r in idx]; pos={m:k fo
 sp=json.load(open('cache/splits.json'))['random']
 np.savez('cache/split_random.npz', train_idx=np.array([pos[i] for i in sp['train']]), val_idx=np.array([pos[i] for i in sp['val']]), test_idx=np.array([pos[i] for i in sp['test']]))
 dm=AtomsDataModule(DB, batch_size=128, split_file='cache/split_random.npz', load_properties=['dipole_moment'],
-  transforms=[trn.SubtractCenterOfGeometry(), trn.CachedNeighborList(cache_path='cache/nbh_cache', neighbor_list=trn.ASENeighborList(cutoff=CUTOFF), keep_cache=True), trn.CastTo32()],
+  transforms=[trn.SubtractCenterOfGeometry(), trn.CachedNeighborList(cache_path='cache/nbh_cache_cut%g'%CUTOFF, neighbor_list=trn.ASENeighborList(cutoff=CUTOFF), keep_cache=True), trn.CastTo32()],
   num_workers=6, pin_memory=True)
 painn=PaiNN(n_atom_basis=NBASIS, n_interactions=3, radial_basis=spk.nn.GaussianRBF(n_rbf=20, cutoff=CUTOFF), cutoff_fn=spk.nn.CosineCutoff(CUTOFF))
 dipole=DipoleMoment(n_in=NBASIS, dipole_key='dipole_moment', use_vector_representation=True)
