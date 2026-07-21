@@ -1,4 +1,5 @@
 import h5py, numpy as np, json, os, time
+import warnings; warnings.filterwarnings('ignore', module=r'h5py')
 from ase import Atoms
 from schnetpack.data import ASEAtomsData
 H5='/home/yc-user/data/squirl/SQuIRL_v1.0.h5'

@@ -1,4 +1,5 @@
 import h5py, numpy as np
+import warnings; warnings.filterwarnings('ignore', module=r'h5py')
 from rdkit import Chem
 from rdkit import RDLogger
 RDLogger.DisableLog('rdApp.*')
