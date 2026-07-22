@@ -8,3 +8,4 @@ logs/
 *.ckpt
 __pycache__/
 *.pyc
+dens.log

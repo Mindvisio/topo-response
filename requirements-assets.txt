@@ -1,0 +1,12 @@
+# Extra dependencies for regenerating the viewer/README assets.
+# Not needed for training or evaluation - see requirements.txt for that.
+#
+#   make_density_cubes.py  -> dens/*.cube + dens/charges.json   (needs pyscf)
+#   render_hero.py         -> assets/hero_<id>.png              (needs vtk + pillow)
+#
+# render_hero.py drives VTK through a virtual display, so the machine also needs
+# the system package xvfb:  xvfb-run -a -s "-screen 0 3840x2160x24" python3 render_hero.py 101807
+
+pyscf==2.13.1
+vtk==9.3.1
+pillow==12.0.0

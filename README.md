@@ -2,7 +2,7 @@
 
 **Topology-conditioned E(3)-equivariant prediction of molecular dipole moments and polarizability tensors.**
 
-DLS course project. Given a molecule's 3D geometry, predict its dipole moment vector (μ, an ℓ=1 vector) and dipole polarizability tensor (α, ℓ=0 ⊕ ℓ=2) with an E(3)-equivariant network, and study whether **persistent-homology (TDA) features** add predictive value beyond a strong equivariant model — especially under **distribution shift** (topology / size / conformation OOD).
+DLS course project. Given a molecule's 3D geometry, predict its dipole moment vector (μ, an ℓ=1 vector) and dipole polarizability tensor (α, ℓ=0 ⊕ ℓ=2) with an E(3)-equivariant network, and study whether **persistent-homology (TDA) features** add predictive value beyond a strong equivariant model — especially under **distribution shift**. The reported study uses the topology-OOD split; size- and conformation-OOD were scoped but not run.
 
 ## Why
 
@@ -16,8 +16,8 @@ Equivariant message passing (PaiNN, MACE, …) already predicts molecular respon
 
 - **Backbone**: E(3)-equivariant network (SchNetPack PaiNN) with dipole (ℓ=1) and polarizability (ℓ=0⊕ℓ=2) heads.
 - **TDA conditioning** (irrep-preserving): per-molecule H₀/H₁ persistence of the 3D point cloud → persistence features z_PH that gate channel mixing *within each irrep* (exact equivariance preserved), not appended to Cartesian components.
-- **Splits**: random · topology-OOD (train few-ring → test ring-rich) · size-OOD.
-- **Controls**: shuffled TDA, random features of equal dimension, ring-count baseline, larger receptive field without TDA, matched parameter count.
+- **Splits**: random · topology-OOD (train few-ring → test ring-rich) · group-random (molecules grouped by canonical SMILES, whole groups assigned at random).
+- **Controls run**: shuffled z_PH, matched-capacity random features of equal dimension, and an element-augmented 4D persistence variant. A ring-count baseline, a larger-receptive-field baseline and a separate matched-parameter baseline were scoped but not run.
 - **Metrics**: dipole vector MAE + angular error; polarizability Frobenius, isotropic/anisotropic split, eigenvalue error; exact equivariance check.
 
 ## Interactive visualization
@@ -28,9 +28,23 @@ Equivariant message passing (PaiNN, MACE, …) already predicts molecular respon
 
 `index.html` — a WebGL viewer showing true vs predicted dipole vectors on real molecular geometries, with live angular/magnitude error. Live (GitHub Pages): **https://mindvisio.github.io/topo-response/**
 
+> The six molecules in the viewer, and the one rendered above, are **training-set** examples of the topology-OOD split, picked to span a range of dipole magnitudes. The errors they display illustrate the fit, not held-out generalisation — for that see `results_5seed.csv` and the table below.
+
 ## Status
 
-Work in progress. Data pipeline + TDA features done; equivariant dipole baseline training; polarizability head + TDA conditioning + OOD/controls next.
+The dipole/polarizability study on the topology-OOD split is complete. **The tested hypothesis was not supported.**
+
+Five seeds per arm (baseline / TDA / matched-capacity random), both properties, paired t-tests on the topology-OOD test set. Raw numbers in `results_5seed.csv`; recompute with `compute_ci.py`.
+
+| paired difference | dipole | polarizability |
+| --- | --- | --- |
+| TDA - baseline | +0.0013 [-0.0036, +0.0063], p=0.50 | +0.2256 [+0.069, +0.382], p=0.016 (nominal only) |
+| TDA - random | +0.0016, p=0.57 | -0.056, p=0.62 |
+| random - baseline | -0.0003, p=0.88 | +0.2816, p=0.114 |
+
+No advantage of geometric z_PH + FiLM conditioning over the plain equivariant baseline or over the matched-capacity random control was detected. The one nominally significant effect (polarizability, TDA worse than baseline) does not survive multiple-comparison correction over the six reported tests.
+
+This is a qualitative negative result. It does **not** establish that persistent homology is uninformative or equivalent to noise: no equivalence margin was pre-specified, the confidence intervals remain wide, and the finding does not generalise beyond this descriptor, conditioning scheme, dataset and split. `RUN_MANIFEST.md` states the caveats in full.
 
 ## Structure
 

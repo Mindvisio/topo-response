@@ -42,6 +42,6 @@ def main():
         (fails if v is None else order).append(mid)
         if v is not None: vecs.append(v)
     Z=np.stack(vecs).astype(np.float32); np.save('cache/zph_elem4d.npy', Z)
-    json.dump(dict(order=order,dim=int(Z.shape[1]),n_fail=len(fails),grid='fixed_0_1_64',kind='Z-weighted-4D'), open('cache/zph_elem4d_meta.json','w'))
+    json.dump(dict(order=order,dim=int(Z.shape[1]),n_fail=len(fails),grid='fixed_0_1_64',kind='element-augmented-4D'), open('cache/zph_elem4d_meta.json','w'))
     print('element-augmented 4D VR z_PH DONE fixed: %dx%d, %d fails'%(Z.shape[0],Z.shape[1],len(fails)),flush=True)
 if __name__=='__main__': main()
