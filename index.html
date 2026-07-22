@@ -65,6 +65,7 @@
   .rep button{flex:1; pointer-events:auto; cursor:pointer; background:rgba(10,14,20,.5); border:1px solid var(--stroke); color:var(--dim); font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.01em; padding:7px 3px; border-radius:8px; transition:color .15s, background .15s, border-color .15s}
   .rep button:hover{color:var(--ink); border-color:rgba(91,140,255,.4)}
   .rep button.on{color:var(--bg); background:var(--true); border-color:var(--true)}
+  .densnote{font-family:'IBM Plex Mono',monospace; font-size:9.5px; color:var(--faint); margin-top:7px; min-height:12px; text-align:center; letter-spacing:.04em}
   .ctrls{position:fixed; z-index:3; top:22px; left:50%; transform:translateX(-50%); display:flex; gap:6px; background:rgba(16,22,32,.6); border:1px solid var(--stroke); border-radius:11px; padding:5px; backdrop-filter:blur(10px)}
   .ctrls button{pointer-events:auto; cursor:pointer; background:transparent; border:0; color:var(--dim); font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.05em; padding:6px 11px; border-radius:7px; transition:color .15s, background .15s; text-transform:uppercase; white-space:nowrap}
   .ctrls button:hover{color:var(--ink)}
@@ -135,9 +136,10 @@
   </div>
   <div class="rep" id="rep">
     <button data-rep="0" class="on">ball+stick</button>
-    <button data-rep="1">space-fill</button>
-    <button data-rep="2">surface</button>
+    <button data-rep="1">surface</button>
+    <button data-rep="2">density</button>
   </div>
+  <div class="densnote" id="densnote"></div>
 </div>
 <div class="joy" id="joy">
   <div class="joyknob" id="joyknob"></div>
@@ -161,23 +163,68 @@ function centroid(atoms){let s=[0,0,0];atoms.forEach(a=>{s[0]+=a[1];s[1]+=a[2];s
 const viewer=$3Dmol.createViewer(document.getElementById('viewer'),{backgroundColor:'#080b11',antialias:true});
 const DVEC_SCALE_BASE=0.46; let vecScale=1.0, spinning=true, cur=0, repMode=0; const SCALES=[1.0,1.6,0.6]; const AU2D=2.541746;
 function drawArrow(from,to,color,radius){viewer.addArrow({start:{x:from[0],y:from[1],z:from[2]},end:{x:to[0],y:to[1],z:to[2]},radius:radius,color:color,radiusRatio:2.6,mid:0.86});}
-function render(i){
-  const m=MOLS[i]; cur=i; viewer.clear();
-  const xyz=m.atoms.length+"\n\n"+m.atoms.map(a=>a[0]+" "+a[1]+" "+a[2]+" "+a[3]).join("\n");
-  viewer.addModel(xyz,"xyz");
-  if(repMode===1){viewer.setStyle({},{sphere:{colorscheme:'Jmol'}});}
-  else if(repMode===2){viewer.setStyle({},{stick:{radius:0.08,colorscheme:'Jmol'}});}
-  else{viewer.setStyle({},{stick:{radius:0.13,colorscheme:'Jmol'},sphere:{scale:0.26,colorscheme:'Jmol'}});}
+const COVR={H:0.31,C:0.76,N:0.71,O:0.66,F:0.57,S:1.05,Cl:1.02};
+const MAXV={H:1,C:4,N:4,O:2,F:1,S:6,Cl:1};
+function wantOrder(e1,e2,d){var p=[e1,e2].sort().join('');
+  if(p==='CC') return d<1.25?3:(d<1.42?2:1);
+  if(p==='CN') return d<1.21?3:(d<1.35?2:1);
+  if(p==='CO') return d<1.30?2:1;
+  if(p==='NN') return d<1.20?3:(d<1.32?2:1);
+  if(p==='NO') return d<1.30?2:1;
+  return 1;}
+function padl(x,w){var s=String(x); while(s.length<w) s=' '+s; return s;}
+function toSDF(atoms){
+  var n=atoms.length, B=[], val=[], i, j;
+  for(i=0;i<n;i++) val.push(0);
+  for(i=0;i<n;i++){for(j=i+1;j<n;j++){
+    var a=atoms[i], b=atoms[j], d=Math.hypot(a[1]-b[1],a[2]-b[2],a[3]-b[3]);
+    if(d<((COVR[a[0]]||0.75)+(COVR[b[0]]||0.75))*1.3){B.push({i:i,j:j,o:1,d:d,w:wantOrder(a[0],b[0],d)}); val[i]++; val[j]++;}
+  }}
+  B.slice().sort(function(p,q){return p.d-q.d;}).forEach(function(e){
+    if(e.w<=1) return;
+    var mi=MAXV[atoms[e.i][0]]||4, mj=MAXV[atoms[e.j][0]]||4;
+    var add=Math.min(e.w-1, mi-val[e.i], mj-val[e.j]);
+    if(add>0){e.o=1+add; val[e.i]+=add; val[e.j]+=add;}
+  });
+  var s='molecule\n  viewer\n\n'+padl(n,3)+padl(B.length,3)+'  0  0  0  0  0  0  0  0999 V2000\n';
+  atoms.forEach(function(a){s+=padl(a[1].toFixed(4),10)+padl(a[2].toFixed(4),10)+padl(a[3].toFixed(4),10)+' '+(a[0]+'  ').slice(0,3)+' 0  0  0  0  0  0  0  0  0  0  0  0\n';});
+  B.forEach(function(e){s+=padl(e.i+1,3)+padl(e.j+1,3)+padl(e.o,3)+'  0\n';});
+  return s+'M  END\n';
+}
+var DENS_LOCAL='dens/', DENS_CDN='https://raw.githubusercontent.com/Mindvisio/topo-response/main/dens/';
+var densCache={}, densToken=0;
+function densNote(t){var e=document.getElementById('densnote'); if(e) e.textContent=t;}
+function showDensity(txt,id,token){
+  if(token!==densToken||repMode!==2||MOLS[cur].id!==id) return;
+  try{viewer.addVolumetricData(txt,'cube',{isoval:0.002,color:'#5b8cff',opacity:0.42,smoothness:4}); viewer.render(); densNote('RHF/6-31G* density, isovalue 0.002 e/a0\u00b3');}
+  catch(e){densNote('density could not be rendered');}
+}
+function loadDensity(id,token){
+  if(densCache[id]){showDensity(densCache[id],id,token); return;}
+  densNote('loading density\u2026');
+  fetch(DENS_LOCAL+id+'.cube').then(function(r){if(!r.ok) throw new Error('x'); return r.text();})
+   .catch(function(){return fetch(DENS_CDN+id+'.cube').then(function(r){return r.text();});})
+   .then(function(t){densCache[id]=t; showDensity(t,id,token);})
+   .catch(function(){densNote('density file unavailable');});
+}
+function render(i, keepView){
+  const m=MOLS[i]; cur=i;
+  const view=keepView?viewer.getView():null;
+  viewer.clear();
+  viewer.addModel(toSDF(m.atoms),'sdf');
+  if(repMode===0){viewer.setStyle({},{stick:{radius:0.12,colorscheme:'Jmol'},sphere:{scale:0.25,colorscheme:'Jmol'}});}
+  else{viewer.setStyle({},{stick:{radius:0.075,colorscheme:'Jmol'},sphere:{scale:0.11,colorscheme:'Jmol'}});}
   const c=centroid(m.atoms); const pred=predictedDipole(m); const k=DVEC_SCALE_BASE*vecScale;
   if(m.mag>1e-3){
     const tEnd=V.add(c,V.scal(m.dip,k)); const pEnd=V.add(c,V.scal(pred,k));
     drawArrow(c,pEnd,'#f5a524',0.075); drawArrow(c,tEnd,'#2dd4bf',0.095);
     viewer.addSphere({center:{x:c[0],y:c[1],z:c[2]},radius:0.11,color:'#e8eef6',opacity:0.9});
   }
-  viewer.zoomTo(); viewer.zoom(m.mag>1e-3?0.85:1.15);
+  if(view) viewer.setView(view); else {viewer.zoomTo(); viewer.zoom(m.mag>1e-3?0.85:1.15);}
   viewer.spin(spinning?'y':false, spinning?0.6:0);
-  if(repMode===2){try{const sp=viewer.addSurface($3Dmol.SurfaceType.VDW,{opacity:0.5,colorscheme:'Jmol'}); if(sp&&typeof sp.then==='function') sp.then(()=>viewer.render()); else viewer.render();}catch(e){viewer.render();}}
+  if(repMode===1){densNote(''); try{const sp=viewer.addSurface($3Dmol.SurfaceType.VDW,{opacity:0.45,colorscheme:'Jmol'}); if(sp&&typeof sp.then==='function') sp.then(function(){viewer.render();}); else viewer.render();}catch(e){viewer.render();}}
   else{viewer.render();}
+  if(repMode===2){densToken++; loadDensity(m.id,densToken);} else {densNote('');}
   updatePanel(m,pred);
   const sel=document.getElementById('molsel'); if(sel) sel.value=i;
 }
@@ -205,10 +252,10 @@ function drawGauge(ang){
 const sel=document.getElementById('molsel');
 MOLS.forEach((m,i)=>{const o=document.createElement('option'); o.value=i; o.textContent=formulaText(m.atoms)+'  ·  #'+m.id+'  ('+(m.mag*AU2D).toFixed(2)+' D)'; sel.appendChild(o);});
 sel.addEventListener('change',()=>render(parseInt(sel.value,10)));
-document.querySelectorAll('#rep button').forEach(b=>{b.addEventListener('click',()=>{repMode=parseInt(b.getAttribute('data-rep'),10); document.querySelectorAll('#rep button').forEach(x=>x.classList.toggle('on',x===b)); render(cur);});});
+document.querySelectorAll('#rep button').forEach(b=>{b.addEventListener('click',()=>{repMode=parseInt(b.getAttribute('data-rep'),10); document.querySelectorAll('#rep button').forEach(x=>x.classList.toggle('on',x===b)); render(cur,true);});});
 document.getElementById('spinBtn').onclick=function(){spinning=!spinning; this.classList.toggle('on',spinning); viewer.spin(spinning?'y':false, spinning?0.6:0);};
 document.getElementById('resetBtn').onclick=()=>{viewer.zoomTo();viewer.zoom(MOLS[cur].mag>1e-3?0.85:1.15);viewer.render();};
-let si=0; document.getElementById('scaleBtn').onclick=function(){si=(si+1)%SCALES.length; vecScale=SCALES[si]; this.textContent='↔ vectors ×'+vecScale.toFixed(1); render(cur);};
+let si=0; document.getElementById('scaleBtn').onclick=function(){si=(si+1)%SCALES.length; vecScale=SCALES[si]; this.textContent='↔ vectors ×'+vecScale.toFixed(1); render(cur,true);};
 window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'){render((cur+1)%MOLS.length);} if(e.key==='ArrowLeft'){render((cur-1+MOLS.length)%MOLS.length);}});
 (function(){
   const joy=document.getElementById('joy'), knob=document.getElementById('joyknob');
