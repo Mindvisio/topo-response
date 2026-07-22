@@ -115,7 +115,7 @@ def dipole_actors(center, dtrue, dpred):
     return acts
 
 
-def aim_camera(ren, center, mu, bounds, zoom=1.3):
+def aim_camera(ren, center, mu, zoom=1.3):
     """Look at the molecule from a direction perpendicular to the dipole,
     with the dipole running up the frame."""
     u = np.asarray(mu, float) / np.linalg.norm(mu)
@@ -125,14 +125,14 @@ def aim_camera(ren, center, mu, bounds, zoom=1.3):
     n = np.cross(u, t); n /= np.linalg.norm(n)
     cam = ren.GetActiveCamera()
     cam.SetViewUp(*u); cam.SetFocalPoint(*center); cam.SetPosition(*(center + n * 12.0))
-    ren.ResetCamera(bounds)
+    ren.ResetCamera()
     cam.Zoom(zoom)
     return cam
 
 
 def main():
     mid = sys.argv[1] if len(sys.argv) > 1 else '101807'
-    W, H, SS = 1720, 800, 2
+    W, H, SS = 1680, 780, 2
     html = open('index.html').read()
     MOLS = json.loads(re.search(r'const MOLS = (\[.*?\]);', html, re.S).group(1))
     PRED = json.loads(re.search(r'const PRED\s*=\s*(\{.*?\})\s*;', html, re.S).group(1))
@@ -197,9 +197,8 @@ def main():
         renR.AddActor(a)
     renR.AddActor(dact)
 
-    b = surf.GetBounds()
-    aim_camera(renL, center, dtrue, b)
-    renR.SetActiveCamera(renL.GetActiveCamera())
+    aim_camera(renL, center, dtrue, 1.42)
+    aim_camera(renR, center, dtrue, 1.20)
 
     f = SS
     renL.AddActor2D(label('geometry + dipole', 26 * f, 34 * f, 15 * f, (0.62, 0.70, 0.80)))
