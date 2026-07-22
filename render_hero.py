@@ -72,27 +72,98 @@ def cone(tip_at, direction, length, radius, rgb):
     return a
 
 
-def label(text, x, y, size, rgb, bold=False):
-    t = vtk.vtkTextActor(); t.SetInput(text)
-    pr = t.GetTextProperty()
-    pr.SetFontFamilyToArial(); pr.SetFontSize(size); pr.SetColor(*rgb)
-    pr.SetBold(bold); pr.SetJustificationToLeft()
-    t.SetDisplayPosition(x, y)
-    return t
+def draw_labels(im, W, H, smiles):
+    """Captions are drawn with PIL rather than vtkTextActor: at this size VTK's
+    built-in font renders the serifs of a square bracket so faintly that a SMILES
+    like [NH3+] reads as (NH3+)."""
+    from PIL import ImageDraw, ImageFont
+    from matplotlib import font_manager as fm
+    reg = fm.findfont(fm.FontProperties(family='DejaVu Sans'))
+    bold = fm.findfont(fm.FontProperties(family='DejaVu Sans', weight='bold'))
+    d = ImageDraw.Draw(im)
+    f_title = ImageFont.truetype(bold, 27)
+    f_small = ImageFont.truetype(reg, 17)
+    grey = (150, 168, 190)
+    rgb255 = lambda c: tuple(int(round(255 * x)) for x in c)
+    d.text((28, 26), smiles, font=f_title, fill=(226, 236, 246))
+    d.text((28, H - 96), 'true \u03bc (solid)', font=f_small, fill=rgb255(TRUE_RGB))
+    d.text((28, H - 70), 'predicted \u03bc (dashed)', font=f_small, fill=rgb255(PRED_RGB))
+    d.text((28, H - 44), 'geometry + dipole', font=f_small, fill=grey)
+    x2 = W // 2 + 28
+    d.text((x2, H - 70), 'electron density, coloured by electrostatic potential', font=f_small, fill=grey)
+    d.text((x2, H - 44), 'negative', font=f_small, fill=(255, 115, 115))
+    d.text((x2 + d.textlength('negative ', font=f_small), H - 44), '/ positive', font=f_small, fill=(107, 163, 255))
+
+
+MAXV = {1: 1, 6: 4, 7: 4, 8: 2, 9: 1, 16: 6}
+
+
+def want_order(z1, z2, d):
+    p = tuple(sorted((z1, z2)))
+    if p == (6, 6): return 3 if d < 1.25 else (2 if d < 1.42 else 1)
+    if p == (6, 7): return 3 if d < 1.21 else (2 if d < 1.35 else 1)
+    if p == (6, 8): return 2 if d < 1.30 else 1
+    if p == (7, 7): return 3 if d < 1.20 else (2 if d < 1.32 else 1)
+    if p == (7, 8): return 2 if d < 1.30 else 1
+    return 1
+
+
+def perceive_bonds(Z, pos):
+    """Covalent-radius bonding with valence-capped bond orders, matching the viewer.
+    Capping matters: a naive distance rule makes the short single bond between two
+    triple bonds look double and leaves carbon five-valent."""
+    n = len(Z)
+    B, val = [], [0] * n
+    for i in range(n):
+        for j in range(i + 1, n):
+            d = float(np.linalg.norm(pos[i] - pos[j]))
+            if d < (RCOV.get(Z[i], 0.75) + RCOV.get(Z[j], 0.75)) * 1.3:
+                B.append([i, j, 1, d, want_order(Z[i], Z[j], d)])
+                val[i] += 1; val[j] += 1
+    for e in sorted(B, key=lambda e: e[3]):
+        if e[4] <= 1:
+            continue
+        i, j = e[0], e[1]
+        add = min(e[4] - 1, MAXV.get(Z[i], 4) - val[i], MAXV.get(Z[j], 4) - val[j])
+        if add > 0:
+            e[2] = 1 + add; val[i] += add; val[j] += add
+    return B
+
+
+def bond_offset_dir(i, j, pos, B):
+    """In-plane perpendicular, so a double bond is drawn in the plane of its group."""
+    b = pos[j] - pos[i]; b = b / np.linalg.norm(b)
+    for e in B:
+        for a, c in ((e[0], e[1]), (e[1], e[0])):
+            if a in (i, j) and c not in (i, j):
+                nrm = np.cross(b, pos[c] - pos[a])
+                if np.linalg.norm(nrm) > 1e-3:
+                    v = np.cross(nrm, b)
+                    return v / np.linalg.norm(v)
+    t = np.array([0.0, 0.0, 1.0]) if abs(b[2]) < 0.9 else np.array([1.0, 0.0, 0.0])
+    v = np.cross(np.cross(b, t), b)
+    return v / np.linalg.norm(v)
 
 
 def ball_stick(Z, pos):
-    """Half-coloured bonds plus atom spheres, positions in Angstrom."""
-    acts, n = [], len(Z)
-    for i in range(n):
-        acts.append(sphere(pos[i], RBALL.get(Z[i], 0.33), JMOL.get(Z[i], (0.8, 0.8, 0.8))))
-    for i in range(n):
-        for j in range(i + 1, n):
-            d = np.linalg.norm(pos[i] - pos[j])
-            if d < (RCOV.get(Z[i], 0.75) + RCOV.get(Z[j], 0.75)) * 1.3:
-                mid = (pos[i] + pos[j]) / 2.0
-                acts.append(cylinder(pos[i], mid, 0.105, JMOL.get(Z[i], (0.8, 0.8, 0.8))))
-                acts.append(cylinder(mid, pos[j], 0.105, JMOL.get(Z[j], (0.8, 0.8, 0.8))))
+    """Atom spheres plus half-coloured bonds, drawn with their bond order."""
+    acts = [sphere(pos[i], RBALL.get(Z[i], 0.33), JMOL.get(Z[i], (0.8, 0.8, 0.8)))
+            for i in range(len(Z))]
+    B = perceive_bonds(Z, pos)
+    for i, j, order, d, w in B:
+        ci = JMOL.get(Z[i], (0.8, 0.8, 0.8)); cj = JMOL.get(Z[j], (0.8, 0.8, 0.8))
+        if order == 1:
+            offsets, r = [0.0], 0.105
+        elif order == 2:
+            offsets, r = [-0.085, 0.085], 0.062
+        else:
+            offsets, r = [-0.115, 0.0, 0.115], 0.05
+        p = bond_offset_dir(i, j, pos, B) if order > 1 else np.zeros(3)
+        for o in offsets:
+            a, b = pos[i] + p * o, pos[j] + p * o
+            m = (a + b) / 2.0
+            acts.append(cylinder(a, m, r, ci))
+            acts.append(cylinder(m, b, r, cj))
     return acts
 
 
@@ -101,14 +172,14 @@ def dipole_actors(center, dtrue, dpred):
     acts = []
     Lt = np.linalg.norm(dtrue) * ARROW_SCALE; ut = np.asarray(dtrue) / np.linalg.norm(dtrue)
     Lp = np.linalg.norm(dpred) * ARROW_SCALE; up = np.asarray(dpred) / np.linalg.norm(dpred)
-    head = 0.62
+    head = 0.72
     acts.append(cylinder(center, center + ut * (Lt - head * 0.55), 0.058, TRUE_RGB))
-    acts.append(cone(center + ut * Lt, ut, head, 0.175, TRUE_RGB))
+    acts.append(cone(center + ut * Lt, ut, head, 0.150, TRUE_RGB))
     dash, gap, s = 0.30, 0.20, 0.12
     while s + dash < Lp - head:
         acts.append(cylinder(center + up * s, center + up * (s + dash), 0.104, PRED_RGB))
         s += dash + gap
-    tip = cone(center + up * Lp, up, head, 0.205, PRED_RGB)
+    tip = cone(center + up * Lp, up, head, 0.175, PRED_RGB)
     tip.GetProperty().SetOpacity(0.55)
     acts.append(tip)
     acts.append(sphere(center, 0.105, (0.91, 0.93, 0.96)))
@@ -200,15 +271,6 @@ def main():
     aim_camera(renL, center, dtrue, 0.96)
     aim_camera(renR, center, dtrue, 1.20)
 
-    f = SS
-    renL.AddActor2D(label('geometry + dipole', 26 * f, 34 * f, 15 * f, (0.62, 0.70, 0.80)))
-    renR.AddActor2D(label('electron density, coloured by electrostatic potential', 26 * f, 34 * f, 15 * f, (0.62, 0.70, 0.80)))
-    renR.AddActor2D(label('negative', 26 * f, 62 * f, 14 * f, (1.0, 0.45, 0.45)))
-    renR.AddActor2D(label('/ positive', 92 * f, 62 * f, 14 * f, (0.42, 0.64, 1.0)))
-    renL.AddActor2D(label('true mu (solid)', 26 * f, 84 * f, 14 * f, TRUE_RGB))
-    renL.AddActor2D(label('predicted mu (dashed)', 26 * f, 62 * f, 14 * f, PRED_RGB))
-    renL.AddActor2D(label(mol['smiles'], 26 * f, H * f - 46 * f, 19 * f, (0.86, 0.91, 0.96), True))
-
     rw = vtk.vtkRenderWindow(); rw.AddRenderer(renL); rw.AddRenderer(renR)
     rw.SetSize(W * SS, H * SS); rw.SetMultiSamples(0)
     rw.Render()
@@ -218,6 +280,7 @@ def main():
 
     from PIL import Image
     im = Image.open('/tmp/hero_big.png').convert('RGB').resize((W, H), Image.LANCZOS)
+    draw_labels(im, W, H, mol['smiles'])
     import os
     os.makedirs('assets', exist_ok=True)
     out = 'assets/hero_%s.png' % mid

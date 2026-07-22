@@ -126,6 +126,7 @@
     <div class="row"><div class="k"><span class="swatch" style="background:var(--faint)"></span>magnitude error</div>
       <div class="val" id="vmagerr">—<small>D</small></div></div>
   </div>
+  <div class="densnote" id="vecnote">arrow length scaled for visibility · magnitudes above are exact</div>
   <div class="err">
     <svg class="gauge" viewBox="0 0 64 64" id="gauge"></svg>
     <div>
@@ -165,7 +166,13 @@ function formulaText(atoms){const c={};atoms.forEach(a=>c[a[0]]=(c[a[0]]||0)+1);
 function centroid(atoms){let s=[0,0,0];atoms.forEach(a=>{s[0]+=a[1];s[1]+=a[2];s[2]+=a[3];});return V.scal(s,1/atoms.length);}
 const viewer=$3Dmol.createViewer(document.getElementById('viewer'),{backgroundColor:'#080b11',antialias:true});
 const DVEC_SCALE_BASE=0.46; let vecScale=1.0, spinning=true, cur=0, repMode=0; const SCALES=[1.0,1.6,0.6]; const AU2D=2.541746;
-function drawArrow(from,to,color,radius){viewer.addArrow({start:{x:from[0],y:from[1],z:from[2]},end:{x:to[0],y:to[1],z:to[2]},radius:radius,color:color,radiusRatio:2.6,mid:0.86});}
+function drawArrow(from,to,color,radius){
+  var L=Math.hypot(to[0]-from[0],to[1]-from[1],to[2]-from[2]);
+  var head=Math.min(0.62,L*0.42);
+  viewer.addArrow({start:{x:from[0],y:from[1],z:from[2]},end:{x:to[0],y:to[1],z:to[2]},radius:radius,color:color,radiusRatio:2.1,mid:Math.max(0.5,1-head/L)});
+}
+var MUMAX=Math.max.apply(null,MOLS.map(function(m){return m.mag;}));
+function arrowLen(mag){return (0.95+3.15*(mag/MUMAX))*vecScale;}
 const COVR={H:0.31,C:0.76,N:0.71,O:0.66,F:0.57,S:1.05,Cl:1.02};
 const MAXV={H:1,C:4,N:4,O:2,F:1,S:6,Cl:1};
 function wantOrder(e1,e2,d){var p=[e1,e2].sort().join('');
@@ -266,10 +273,11 @@ function render(i, keepView){
   viewer.addModel(toSDF(m.atoms),'sdf');
   if(repMode===0){viewer.setStyle({},{stick:{radius:0.12,colorscheme:'Jmol'},sphere:{scale:0.25,colorscheme:'Jmol'}});}
   else{viewer.setStyle({},{stick:{radius:0.075,colorscheme:'Jmol'},sphere:{scale:0.11,colorscheme:'Jmol'}});}
-  const c=centroid(m.atoms); const pred=predictedDipole(m); const k=DVEC_SCALE_BASE*vecScale;
+  const c=centroid(m.atoms); const pred=predictedDipole(m);
   if(m.mag>1e-3){
-    const tEnd=V.add(c,V.scal(m.dip,k)); const pEnd=V.add(c,V.scal(pred,k));
-    drawArrow(c,pEnd,'#f5a524',0.075); drawArrow(c,tEnd,'#2dd4bf',0.095);
+    const tEnd=V.add(c,V.scal(unit(m.dip),arrowLen(V.norm(m.dip))));
+    const pEnd=V.add(c,V.scal(unit(pred),arrowLen(V.norm(pred))));
+    drawArrow(c,pEnd,'#f5a524',0.062); drawArrow(c,tEnd,'#2dd4bf',0.082);
     viewer.addSphere({center:{x:c[0],y:c[1],z:c[2]},radius:0.11,color:'#e8eef6',opacity:0.9});
   }
   if(view) viewer.setView(view); else {viewer.zoomTo(); viewer.zoom(m.mag>1e-3?0.85:1.15);}
