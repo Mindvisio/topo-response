@@ -192,20 +192,69 @@ function toSDF(atoms){
   return s+'M  END\n';
 }
 var DENS_LOCAL='dens/', DENS_CDN='https://raw.githubusercontent.com/Mindvisio/topo-response/main/dens/';
-var densCache={}, densToken=0;
-function densNote(t){var e=document.getElementById('densnote'); if(e) e.textContent=t;}
-function showDensity(txt,id,token){
+var densCache={}, chargeCache=null, densToken=0;
+function densNote(t){var e=document.getElementById('densnote'); if(e) e.innerHTML=t;}
+function grab(name){
+  return fetch(DENS_LOCAL+name).then(function(r){if(!r.ok) throw new Error('local'); return r.text();})
+    .catch(function(){return fetch(DENS_CDN+name).then(function(r){return r.text();});});
+}
+function buildESP(cubeTxt,q){
+  var L=cubeTxt.split('\n');
+  var h=L[2].trim().split(/\s+/), nat=Math.abs(parseInt(h[0],10));
+  var o=[+h[1],+h[2],+h[3]], D=[], A=[], i, j, k, b;
+  for(k=0;k<3;k++){var p=L[3+k].trim().split(/\s+/); D.push(parseInt(p[0],10)); A.push([+p[1],+p[2],+p[3]]);}
+  var P=[];
+  for(b=0;b<nat;b++){var pa=L[6+b].trim().split(/\s+/); P.push([+pa[2],+pa[3],+pa[4]]);}
+  var dv=L.slice(6+nat).join(' ').trim().split(/\s+/);
+  var out=new Array(D[0]*D[1]*D[2]), band=[], t=0;
+  for(i=0;i<D[0];i++){for(j=0;j<D[1];j++){for(k=0;k<D[2];k++){
+    var x=o[0]+i*A[0][0]+j*A[1][0]+k*A[2][0];
+    var y=o[1]+i*A[0][1]+j*A[1][1]+k*A[2][1];
+    var z=o[2]+i*A[0][2]+j*A[1][2]+k*A[2][2];
+    var v=0;
+    for(b=0;b<nat;b++){
+      var dx=x-P[b][0], dy=y-P[b][1], dz=z-P[b][2];
+      var r=Math.sqrt(dx*dx+dy*dy+dz*dz); if(r<0.6) r=0.6;
+      v+=(q&&q[b]!==undefined?q[b]:0)/r;
+    }
+    out[t]=v.toFixed(4);
+    var d=+dv[t]; if(d>0.0012&&d<0.0035) band.push(v);
+    t++;
+  }}}
+  band.sort(function(a1,a2){return a1-a2;});
+  var R=0.05;
+  if(band.length>20){
+    var lo=Math.abs(band[Math.floor(band.length*0.04)]), hi=Math.abs(band[Math.floor(band.length*0.96)]);
+    R=Math.max(lo,hi,0.012);
+  }
+  return {esp:L.slice(0,6+nat).join('\n')+'\n'+out.join(' ')+'\n', range:R};
+}
+function showDensity(txt,q,id,token){
   if(token!==densToken||repMode!==2||MOLS[cur].id!==id) return;
-  try{viewer.addVolumetricData(txt,'cube',{isoval:0.002,color:'#5b8cff',opacity:0.42,smoothness:4}); viewer.render(); densNote('RHF/6-31G* density, isovalue 0.002 e/a0\u00b3');}
-  catch(e){densNote('density could not be rendered');}
+  try{
+    var built=buildESP(txt,q);
+    viewer.addIsosurface(new $3Dmol.VolumeData(txt,'cube'),
+      {isoval:0.002, opacity:0.72, smoothness:6,
+       voldata:new $3Dmol.VolumeData(built.esp,'cube'),
+       volscheme:new $3Dmol.Gradient.RWB(-built.range,built.range)});
+    viewer.render();
+    densNote('electron density 0.002 e/a\u2080\u00b3, coloured by electrostatic potential &nbsp;<b style="color:#ff6b6b">\u2212</b> negative &nbsp;<b style="color:#6ba8ff">+</b> positive');
+  }catch(e){
+    try{viewer.addVolumetricData(txt,'cube',{isoval:0.002,color:'#7cc4ff',opacity:0.72,smoothness:6}); viewer.render();
+        densNote('electron density, isovalue 0.002 e/a\u2080\u00b3');}
+    catch(e2){densNote('density could not be rendered');}
+  }
 }
 function loadDensity(id,token){
-  if(densCache[id]){showDensity(densCache[id],id,token); return;}
+  if(densCache[id]&&chargeCache){showDensity(densCache[id],chargeCache[id],id,token); return;}
   densNote('loading density\u2026');
-  fetch(DENS_LOCAL+id+'.cube').then(function(r){if(!r.ok) throw new Error('x'); return r.text();})
-   .catch(function(){return fetch(DENS_CDN+id+'.cube').then(function(r){return r.text();});})
-   .then(function(t){densCache[id]=t; showDensity(t,id,token);})
-   .catch(function(){densNote('density file unavailable');});
+  Promise.all([
+    densCache[id]?Promise.resolve(densCache[id]):grab(id+'.cube'),
+    chargeCache?Promise.resolve(chargeCache):grab('charges.json').then(function(t){return JSON.parse(t);})
+  ]).then(function(res){
+    densCache[id]=res[0]; chargeCache=res[1];
+    showDensity(res[0],res[1][id],id,token);
+  }).catch(function(){densNote('density data unavailable');});
 }
 function render(i, keepView){
   const m=MOLS[i]; cur=i;
