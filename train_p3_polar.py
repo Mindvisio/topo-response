@@ -21,7 +21,7 @@ ap.add_argument('--tag', default=None)
 ap.add_argument('--seed', type=int, default=0)
 a=ap.parse_args()
 import pytorch_lightning as _pl; _pl.seed_everything(a.seed, workers=True)
-tag=a.tag or ('polar_%s_%s_s%d'%(a.split,a.cond,a.seed))
+tag=a.tag or ('polar_%s_%s_s%d'%(a.split,a.cond,a.seed)+('' if a.cutoff==5.0 else '_c%g'%a.cutoff))
 use_cond=a.cond!='none'
 tfs=[trn.SubtractCenterOfGeometry(), trn.CachedNeighborList(cache_path='%s_cut%g'%(a.cache,a.cutoff), neighbor_list=trn.ASENeighborList(cutoff=a.cutoff), keep_cache=True), trn.CastTo32()]
 if use_cond: tfs.append(make_zph_transform(a.cond, 'cache/split_%s.npz'%a.split))
