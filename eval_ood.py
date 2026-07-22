@@ -21,8 +21,10 @@ rep=PaiNNWithTDA(painn, TDACondition()) if use_cond else painn
 model=NeuralNetworkPotential(representation=rep, input_modules=[PairwiseDistances()], output_modules=[DipoleMoment(n_in=NBASIS, dipole_key='dipole_moment', use_vector_representation=True)])
 output=ModelOutput(name='dipole_moment', loss_fn=FlatMSE(), loss_weight=1.0, metrics={'MAE':FlatMAE()})
 task=AtomisticTask(model, outputs=[output], optimizer_cls=torch.optim.AdamW, optimizer_args={'lr':5e-4})
-sd=torch.load(a.ckpt, map_location='cpu')['state_dict']; miss=task.load_state_dict(sd, strict=False)
-print('loaded; missing=%d unexpected=%d'%(len(miss.missing_keys),len(miss.unexpected_keys)))
+sd=torch.load(a.ckpt, map_location='cpu')['state_dict']
+# strict: a silently half-loaded model would still produce numbers, and they would look like results
+task.load_state_dict(sd, strict=True)
+print('loaded %d tensors from %s (strict)'%(len(sd), a.ckpt))
 dev='cuda' if torch.cuda.is_available() else 'cpu'; task.to(dev); task.eval()
 Ps=[]; Ts=[]
 for batch in dm.test_dataloader():

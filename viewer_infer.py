@@ -15,7 +15,7 @@ model=NeuralNetworkPotential(representation=painn, input_modules=[PairwiseDistan
 task=AtomisticTask(model, outputs=[ModelOutput(name='dipole_moment', loss_fn=FlatMSE(), loss_weight=1.0, metrics={'MAE':FlatMAE()})], optimizer_cls=torch.optim.AdamW, optimizer_args={'lr':5e-4})
 ck=sorted(glob.glob('ckpt_topology_ood_none_s0/best-*.ckpt'))[0]
 print('ckpt:', ck)
-task.load_state_dict(torch.load(ck, map_location='cpu')['state_dict'], strict=False)
+task.load_state_dict(torch.load(ck, map_location='cpu')['state_dict'], strict=True)
 task.eval(); dev='cuda' if torch.cuda.is_available() else 'cpu'; task.to(dev)
 conv=AtomsConverter(neighbor_list=trn.ASENeighborList(cutoff=CUT), transforms=[trn.SubtractCenterOfGeometry(), trn.CastTo32()], device=dev)
 preds={}
