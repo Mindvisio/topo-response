@@ -197,7 +197,7 @@ def main():
         renR.AddActor(a)
     renR.AddActor(dact)
 
-    aim_camera(renL, center, dtrue, 1.42)
+    aim_camera(renL, center, dtrue, 0.96)
     aim_camera(renR, center, dtrue, 1.20)
 
     f = SS
@@ -207,7 +207,7 @@ def main():
     renR.AddActor2D(label('/ positive', 92 * f, 62 * f, 14 * f, (0.42, 0.64, 1.0)))
     renL.AddActor2D(label('true mu (solid)', 26 * f, 84 * f, 14 * f, TRUE_RGB))
     renL.AddActor2D(label('predicted mu (dashed)', 26 * f, 62 * f, 14 * f, PRED_RGB))
-    renL.AddActor2D(label('#%s   %s' % (mid, mol['smiles']), 26 * f, H * f - 44 * f, 17 * f, (0.86, 0.91, 0.96), True))
+    renL.AddActor2D(label(mol['smiles'], 26 * f, H * f - 46 * f, 19 * f, (0.86, 0.91, 0.96), True))
 
     rw = vtk.vtkRenderWindow(); rw.AddRenderer(renL); rw.AddRenderer(renR)
     rw.SetSize(W * SS, H * SS); rw.SetMultiSamples(0)
