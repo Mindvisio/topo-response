@@ -10,3 +10,4 @@ __pycache__/
 *.pyc
 dens.log
 splitting.lock
+probe_cache/

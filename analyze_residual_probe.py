@@ -1,0 +1,136 @@
+"""Aggregate the residual-probe per-seed table into the paired n=5 statistics.
+
+The unit of independent replication is the baseline training seed (n=5). random and
+shuffled contribute five realizations per seed; those are averaged WITHIN a seed
+first, so they never masquerade as extra training seeds. Paired differences are
+TDA vs each control, with a Holm correction over the pre-declared family of primary
+tests. p>0.05 is reported as "not detected", never as equivalence.
+"""
+import argparse, csv, json
+import numpy as np
+
+PRIMARY_METRIC = {'dipole': 'compMAE', 'polar': 'Frob'}
+
+
+def load(path):
+    rows = list(csv.DictReader(open(path)))
+    for r in rows:
+        for k in ('seed', 'realization'):
+            r[k] = int(r[k])
+        for k in ('baseline', 'corrected', 'delta', 'frac_small'):
+            r[k] = float(r[k])
+        r['probe_r2_mean'] = float(r['probe_r2_mean']) if r['probe_r2_mean'] else np.nan
+        r['sens_delta'] = float(r['sens_delta']) if r['sens_delta'] else np.nan
+    return rows
+
+
+def seed_means(rows, prop, basis, arm):
+    """Delta and probe-R2 per seed, averaging realizations within each seed."""
+    out = {}
+    for r in rows:
+        if r['property'] == prop and r['basis'] == basis and r['arm'] == arm:
+            out.setdefault(r['seed'], []).append(r)
+    seeds = sorted(out)
+    delta = np.array([np.mean([x['delta'] for x in out[s]]) for s in seeds])
+    r2 = np.array([np.nanmean([x['probe_r2_mean'] for x in out[s]]) for s in seeds])
+    return seeds, delta, r2
+
+
+def paired(a, b):
+    """Paired t on seed-aligned vectors: mean diff, 95% CI, p."""
+    from scipy import stats
+    d = a - b
+    n = len(d)
+    m, se = d.mean(), d.std(ddof=1) / np.sqrt(n)
+    tc = stats.t.ppf(0.975, n - 1)
+    p = float(stats.ttest_rel(a, b).pvalue)
+    return m, m - tc * se, m + tc * se, p
+
+
+def holm(pvals):
+    """Holm-Bonferroni adjusted p-values, order-preserving."""
+    idx = np.argsort(pvals); m = len(pvals)
+    adj = np.empty(m); run = 0.0
+    for rank, i in enumerate(idx):
+        val = (m - rank) * pvals[i]
+        run = max(run, val)
+        adj[i] = min(run, 1.0)
+    return adj
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--csv', default='results/residual_probe_per_seed.csv')
+    ap.add_argument('--out', default='results/residual_probe_summary.json')
+    a = ap.parse_args()
+    rows = load(a.csv)
+    summary = {}
+    family = []                                          # (label, pvalue) for the Holm family
+    for prop in ['dipole', 'polar']:
+        pm = PRIMARY_METRIC[prop]
+        summary[prop] = {'primary_metric': pm}
+        for basis in ['primary', 'secondary']:
+            seeds, d_tda, r2_tda = seed_means(rows, prop, basis, 'tda')
+            if not seeds:
+                continue
+            _, d_null, _ = seed_means(rows, prop, basis, 'null')
+            _, d_rand, r2_rand = seed_means(rows, prop, basis, 'random')
+            _, d_shuf, r2_shuf = seed_means(rows, prop, basis, 'shuffled')
+            block = {
+                'seeds': seeds,
+                'delta_tda_per_seed': d_tda.tolist(),
+                'delta_tda_mean': float(d_tda.mean()), 'delta_tda_std': float(d_tda.std(ddof=1)),
+                'probe_r2_tda_per_seed': r2_tda.tolist(), 'probe_r2_tda_mean': float(np.nanmean(r2_tda)),
+                'probe_r2_random_mean': float(np.nanmean(r2_rand)),
+                'probe_r2_shuffled_mean': float(np.nanmean(r2_shuf)),
+            }
+            for ctrl_name, ctrl in [('null', d_null), ('random', d_rand), ('shuffled', d_shuf)]:
+                m, lo, hi, p = paired(d_tda, ctrl)
+                block['tda_vs_%s' % ctrl_name] = dict(mean=m, ci=[lo, hi], p=p)
+                if basis == 'primary':                   # only the primary basis enters the declared family
+                    family.append(('%s tda-vs-%s' % (prop, ctrl_name), p))
+            sens = [r['sens_delta'] for r in rows
+                    if r['property'] == prop and r['basis'] == basis and r['arm'] == 'tda'
+                    and not np.isnan(r['sens_delta'])]
+            if sens:
+                block['sensitivity_delta_mean'] = float(np.mean(sens))
+            block['frac_small'] = float(np.mean([r['frac_small'] for r in rows
+                                                 if r['property'] == prop and r['basis'] == basis]))
+            summary[prop][basis] = block
+    labels = [x[0] for x in family]; ps = np.array([x[1] for x in family])
+    adj = holm(ps)
+    summary['holm_family'] = {lab: {'p': float(p), 'p_holm': float(pa)}
+                              for lab, p, pa in zip(labels, ps, adj)}
+    summary['holm_note'] = ('family = the %d primary-basis tda-vs-control tests; '
+                            'Holm threshold for the smallest is 0.05/%d = %.4f' %
+                            (len(family), len(family), 0.05 / max(len(family), 1)))
+    json.dump(summary, open(a.out, 'w'), indent=1)
+
+    print('=== residual probe summary (n=5 seeds, topology-OOD) ===')
+    for prop in ['dipole', 'polar']:
+        pm = summary[prop]['primary_metric']
+        print('\n%s  (primary metric %s; positive delta = correction HURT)' % (prop.upper(), pm))
+        for basis in ['primary', 'secondary']:
+            b = summary[prop].get(basis)
+            if not b:
+                continue
+            print('  [%s basis]  frac |mu|<0.1D or near-iso = %.4f' % (basis, b['frac_small']))
+            print('    probe R2: tda %.3f | random %.3f | shuffled %.3f'
+                  % (b['probe_r2_tda_mean'], b['probe_r2_random_mean'], b['probe_r2_shuffled_mean']))
+            print('    delta_tda per seed: %s' % ['%+.4f' % x for x in b['delta_tda_per_seed']])
+            print('    delta_tda = %+.4f +/- %.4f' % (b['delta_tda_mean'], b['delta_tda_std']))
+            for c in ['null', 'random', 'shuffled']:
+                t = b['tda_vs_%s' % c]
+                print('    tda vs %-8s: %+.4f [%+.4f, %+.4f] p=%.3f'
+                      % (c, t['mean'], t['ci'][0], t['ci'][1], t['p']))
+            if 'sensitivity_delta_mean' in b:
+                print('    sensitivity (val-only refit) mean delta = %+.4f' % b['sensitivity_delta_mean'])
+    print('\nHolm family (primary basis):')
+    for lab, v in summary['holm_family'].items():
+        print('  %-22s p=%.3f  p_holm=%.3f' % (lab, v['p'], v['p_holm']))
+    print(summary['holm_note'])
+    print('\nwrote %s' % a.out)
+
+
+if __name__ == '__main__':
+    main()
