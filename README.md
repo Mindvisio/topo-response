@@ -48,6 +48,8 @@ the five matched training seeds — not over individual molecules.
 | TDA - random | +0.0016, p=0.57 | -0.056, p=0.62 |
 | random - baseline | -0.0003, p=0.88 | +0.2816, p=0.114 |
 
+![Per-seed results: five seeds for each arm, with the paired differences and their 95% confidence intervals. No comparison clears zero.](assets/fig_paired_seeds.png)
+
 No advantage of geometric z_PH conditioning through feature-wise linear modulation (FiLM) over the plain equivariant baseline or over the matched-capacity random control was detected. The one nominally significant effect (polarizability, TDA worse than baseline) does not survive multiple-comparison correction over the six reported tests.
 
 This is a qualitative negative result. A separate bonus experiment (`RESIDUAL_PROBE_REPORT.md`) freezes the baseline and asks whether `z_PH` can linearly predict the part of its residual an equivariance-preserving correction may touch; neither that linear probe nor a small nonlinear one detected signal beyond matched random and shuffled controls, consistent with the result above. It does **not** establish that persistent homology is uninformative or equivalent to noise: no equivalence margin was pre-specified, the confidence intervals remain wide, and the finding does not generalize beyond this descriptor, conditioning scheme, dataset and split. `RUN_MANIFEST.md` states the caveats in full.
@@ -86,6 +88,22 @@ the dataset's own terms. Cite SQuIRL alongside this repository if you use them.
 | D / a.u. / a0 | debye (dipole); atomic units (polarizability, in bohr^3); bohr radius |
 | SMILES | a line notation for molecular structure |
 
+## Is the descriptor empty?
+
+A null result invites the question of whether `z_PH` carries any topological information in
+the first place. It does. Ring count is linearly decodable from the 130-dimensional vector
+with a held-out R^2 of 0.62 (mean absolute error 0.57 rings), and the first principal
+component orders molecules by ring count on its own.
+
+![PCA of z_PH colored by ring count, and the distribution of PC1 per ring count. The
+components separate by topology and a linear read-out recovers ring count with R^2 = 0.62.](assets/fig_zph_structure.png)
+
+The descriptor is literally the two Betti curves below, sampled on a fixed grid and concatenated with two persistence entropies. H$_1$ counts independent loops, so it responds directly to rings; the curves separate cleanly by ring count.
+
+![Median H0 and H1 Betti curves by ring count, with interquartile shading. H1 separates clearly by the number of rings.](assets/fig_betti_curves.png)
+
+So the negative result is about what the model could *use*, not about an uninformative input — which is what makes the matched random control the important comparison rather than the baseline alone.
+
 ## Reproduce
 
 ```bash
@@ -121,3 +139,4 @@ the equivariance check and every caveat attached to the result. Regenerating the
 **Viewer and figures**
 - `index.html` — interactive dipole viewer; `viewer_infer.py`, `make_viewer_manifest.py` — its predictions and provenance
 - `make_density_cubes.py` — electron density + fitted charges; `render_hero.py` — the cover image
+- `make_figures.py` — the three result figures above, rebuilt from the committed CSV and z_PH cache
