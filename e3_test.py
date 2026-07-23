@@ -20,6 +20,7 @@ from scipy.spatial.transform import Rotation
 NBASIS = 128
 CUTOFF = 5.0
 TOL = 1e-4          # float32 forward passes land ~1e-6; 1e-4 catches real breakage
+BATCH_SEED = 0      # fixes which 24 molecules are audited, so runs are comparable
 SPLIT = 'cache/split_topology_ood.npz'
 KEY = {'dipole': 'dipole_moment', 'polar': 'polarizability'}
 
@@ -54,6 +55,9 @@ def get_batch(head, cond):
     dm = AtomsDataModule('cache/squirl.db', batch_size=24, split_file=SPLIT,
                          load_properties=[KEY[head]], transforms=tfs, num_workers=2)
     dm.setup()
+    # the train loader shuffles, so without a fixed seed each run audits a different
+    # batch and the reported conditioning strengths drift between runs
+    torch.manual_seed(BATCH_SEED)
     return next(iter(dm.train_dataloader()))
 
 

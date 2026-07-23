@@ -41,14 +41,17 @@ TDACondition is identity-initialised, so a freshly built conditioned model emits
 
 | case | conditioning RMS scale/shift/gate | rotation | reflection | translation |
 | --- | --- | --- | --- | --- |
-| dipole, fresh identity init | 0.0000 / 0.0000 / 0.0000 (inert) | 1.2e-06 | 9.8e-07 | 1.1e-06 |
-| dipole, trained baseline | n/a | 6.3e-07 | 7.7e-07 | 9.8e-07 |
-| dipole, trained TDA | 0.2106 / 0.0892 / 0.1882 (active) | 9.7e-07 | 7.9e-07 | 1.3e-06 |
-| polar, fresh identity init | 0.0000 / 0.0000 / 0.0000 (inert) | 2.6e-07 | 2.4e-07 | 2.4e-07 |
-| polar, trained baseline | n/a | 1.6e-07 | 1.8e-07 | 2.2e-07 |
-| polar, trained TDA | 0.2191 / 0.1345 / 0.2622 (active) | 1.3e-07 | 1.5e-07 | 1.3e-07 |
+| dipole, fresh identity init | 0.0000 / 0.0000 / 0.0000 (inert) | 1.9e-06 | 2.2e-06 | 1.8e-06 |
+| dipole, trained baseline | n/a | 6.0e-07 | 5.4e-07 | 9.4e-07 |
+| dipole, trained TDA | 0.2194 / 0.0889 / 0.1917 (active) | 7.8e-07 | 6.4e-07 | 1.1e-06 |
+| polar, fresh identity init | 0.0000 / 0.0000 / 0.0000 (inert) | 3.7e-07 | 3.1e-07 | 3.6e-07 |
+| polar, trained baseline | n/a | 1.6e-07 | 1.4e-07 | 1.5e-07 |
+| polar, trained TDA | 0.2028 / 0.1161 / 0.2359 (active) | 1.5e-07 | 1.3e-07 | 1.2e-07 |
 
-Relative errors are at float32 round-off, so both heads remain E(3)-equivariant under rotation, reflection and translation with the learned conditioning switched on -- not merely at initialisation. Batch: 24 molecules from the topology-OOD split, geometries centered before each forward pass.
+Relative errors are at float32 round-off, so both heads remain E(3)-equivariant under rotation, reflection and translation with the learned conditioning switched on -- not merely at initialisation. Batch: the first 24 molecules of the topology-OOD train loader under a fixed seed
+(`BATCH_SEED = 0` in `e3_test.py`), geometries centered before each forward pass. The
+numbers above are transcribed from `results/e3_gate.log`, which is the single source of
+truth: regenerate it with `python e3_test.py` and the values reproduce exactly.
 
 ## Checkpoints
 44 configs x (best,last) on sci-node /root/topores/ckpt_*/ (zip-verified), naming ckpt[_polar]_<split>_<cond>_s<seed>. Git-excluded. The pipeline is rerunnable from this manifest + pinned env + seeds; the exact checkpoint files are archived on sci-node rather than regenerated bit-for-bit (cuDNN/GPU nondeterminism means a rerun reproduces the reported metrics, not identical weights).
