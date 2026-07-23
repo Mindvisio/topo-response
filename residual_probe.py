@@ -233,10 +233,15 @@ def make_descriptor(kind, ids, zph_all, seed):
 _GYR = {}
 
 
-def gyration_lookup(ids, split='topology_ood'):
-    """S for the given global ids, cached across the whole run (indexed by id)."""
+def gyration_lookup(ids, split='topology_ood', cache='probe_cache'):
+    """S for the given global ids, cached across the whole run (indexed by id).
+
+    The cache lives beside the exports, so a user-supplied --cache directory keeps
+    its own gyration file instead of silently reusing the default one.
+    """
     if 'arr' not in _GYR:
-        path = 'probe_cache/gyration_all.npy'
+        os.makedirs(cache, exist_ok=True)
+        path = os.path.join(cache, 'gyration_all.npy')
         if os.path.exists(path):
             _GYR['arr'] = np.load(path)
         else:
@@ -338,7 +343,7 @@ def main():
         pm = PRIMARY_METRIC[prop]
         for seed in a.seeds:
             ex = load_export(prop, seed, cache=a.cache)
-            S_by = {s: gyration_lookup(ex[s]['idx']) for s in ('train', 'val', 'test')}
+            S_by = {s: gyration_lookup(ex[s]['idx'], cache=a.cache) for s in ('train', 'val', 'test')}
             ids = {s: ex[s]['idx'] for s in ('train', 'val', 'test')}
             base = (dipole_metrics if prop == 'dipole' else polar_metrics)(ex['test']['pred'], ex['test']['target'])
             for basis in a.bases:

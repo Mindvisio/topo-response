@@ -4,7 +4,9 @@ small MLP instead of Ridge.
 A linear probe finding nothing leaves one reading open -- that the relation exists
 but is nonlinear.  This closes that reading as far as a small network can.
 
-Pre-declared before the test set is touched:
+Specification, fixed before this probe was run (but after the Ridge results on the
+same test set had been seen -- so this is a follow-up sensitivity analysis, not an
+independent confirmatory experiment):
   * the well-conditioned PRIMARY basis only (the gyration-augmented bases are
     exploratory and ill-conditioned, so they are not used here);
   * MLP 130 -> 64 -> 32 -> k with ReLU, fitted on train, early-stopped on val;
@@ -13,11 +15,13 @@ Pre-declared before the test set is touched:
   * 5 baseline seeds x 3 weight initialisations, and for the random/shuffled
     controls x5 descriptor realizations, all averaged WITHIN a baseline seed so
     the unit of replication stays the seed (n=5);
-  * test scored once, on both readouts: probe R^2 (test-mean reference) and the
-    physical metric delta.
+  * each fitted model evaluated once on test, with test results used for neither
+    training, early stopping nor model selection; both readouts reported (probe
+    R^2 against a test-mean reference, and the physical metric delta).
 
-This is a SEPARATE pre-declared family from the Ridge probe.  It does not extend
-that family and does not revise its conclusions.
+Analysed as its own family of six tests rather than as an extension of the Ridge
+family, so it does not retroactively change that family's multiplicity or revise
+its conclusions.
 """
 import argparse, csv, os
 import numpy as np
@@ -124,7 +128,7 @@ def main():
         metric_fn = dipole_metrics if prop == 'dipole' else polar_metrics
         for seed in a.seeds:
             ex = load_export(prop, seed, cache=a.cache)
-            S_by = {s: gyration_lookup(ex[s]['idx']) for s in ('train', 'val', 'test')}
+            S_by = {s: gyration_lookup(ex[s]['idx'], cache=a.cache) for s in ('train', 'val', 'test')}
             ids = {s: ex[s]['idx'] for s in ('train', 'val', 'test')}
             base = metric_fn(ex['test']['pred'], ex['test']['target'])
             tgt, masks, names, _ = build_targets(prop, ex, ids, S_by, basis)

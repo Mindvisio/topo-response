@@ -24,6 +24,8 @@ def load(path):
     for r in rows:
         for k in ('seed', 'realization'):
             r[k] = int(r[k])
+        if 'init' in r and r['init'] not in ('', None):
+            r['init'] = int(r['init'])
         for k in ('baseline', 'corrected', 'delta'):
             r[k] = float(r[k])
         # optional columns: the MLP probe records neither a sensitivity refit nor
@@ -60,10 +62,22 @@ def seed_means(rows, prop, basis, arm):
         raise SystemExit('incomplete design: %s/%s/%s has %d seeds, expected %d'
                          % (prop, basis, arm, len(seeds), EXPECTED_SEEDS))
     want = EXPECTED_REALIZATIONS.get(arm, 1)
+    ref = None
     for s in seeds:
         if len(out[s]) != want:
-            raise SystemExit('incomplete design: %s/%s/%s seed %d has %d realizations, expected %d'
+            raise SystemExit('incomplete design: %s/%s/%s seed %d has %d rows, expected %d'
                              % (prop, basis, arm, s, len(out[s]), want))
+        # the exact (realization, init) combinations must match across seeds, not
+        # merely their count -- a duplicated realization would pass a count check
+        combo = sorted((r.get('realization'), r.get('init')) for r in out[s])
+        if len(set(combo)) != len(combo):
+            raise SystemExit('duplicate (realization, init) in %s/%s/%s seed %d'
+                             % (prop, basis, arm, s))
+        if ref is None:
+            ref = combo
+        elif combo != ref:
+            raise SystemExit('design differs between seeds for %s/%s/%s (seed %d)'
+                             % (prop, basis, arm, s))
     delta = np.array([np.mean([x['delta'] for x in out[s]]) for s in seeds])
     r2 = np.array([_safe_mean([x['probe_r2_mean'] for x in out[s]]) for s in seeds])
     return seeds, delta, r2
@@ -117,9 +131,16 @@ def main():
             seeds, d_tda, r2_tda = seed_means(rows, prop, basis, 'tda')
             if not seeds:
                 continue
-            _, d_null, _ = seed_means(rows, prop, basis, 'null')
-            _, d_rand, r2_rand = seed_means(rows, prop, basis, 'random')
-            _, d_shuf, r2_shuf = seed_means(rows, prop, basis, 'shuffled')
+            seeds_null, d_null, _ = seed_means(rows, prop, basis, 'null')
+            if seeds_null != seeds:
+                raise SystemExit('arm seed ids differ for %s/%s: tda %s vs null %s'
+                                 % (prop, basis, seeds, seeds_null))
+            seeds_rand, d_rand, r2_rand = seed_means(rows, prop, basis, 'random')
+            seeds_shuf, d_shuf, r2_shuf = seed_means(rows, prop, basis, 'shuffled')
+            for nm, sd in (('random', seeds_rand), ('shuffled', seeds_shuf)):
+                if sd != seeds:
+                    raise SystemExit('arm seed ids differ for %s/%s: tda %s vs %s %s'
+                                     % (prop, basis, seeds, nm, sd))
             block = {
                 'seeds': seeds,
                 'delta_tda_per_seed': d_tda.tolist(),
