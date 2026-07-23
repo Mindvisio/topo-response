@@ -5,7 +5,7 @@
 #   render_hero.py         -> assets/hero_<id>.png              (needs vtk + pillow)
 #
 # render_hero.py drives VTK through a virtual display, so the machine also needs
-# the system package xvfb:  xvfb-run -a -s "-screen 0 3840x2160x24" python3 render_hero.py 101807
+# the system package xvfb:  xvfb-run -a -s "-screen 0 3840x2160x24" python3 render_hero.py 90694
 
 pyscf==2.13.1
 vtk==9.3.1

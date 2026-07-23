@@ -1,0 +1,163 @@
+{
+ "description": "Provenance for the molecules shown in index.html. Dipoles are in atomic units as stored; the viewer multiplies by 2.541746 for display in Debye.",
+ "split_file": "cache/split_topology_ood.npz",
+ "split_sizes": {
+  "train_idx": 60659,
+  "val_idx": 6739,
+  "test_idx": 66485
+ },
+ "prediction_checkpoint": "ckpt_topology_ood_none_s0/best-epoch=39-val_loss=0.0004.ckpt",
+ "prediction_checkpoint_sha256": "f14a100ad61ae2b2027115630a9a2e1f29f095e4355fc90e92015acc8b991d53",
+ "charges_file": "dens/charges.json",
+ "charges_sha256": "e3118dbaee4b17083a008306b9aa1f31e31fc23dae4f1916f4881df4e6afee8b",
+ "density_method": "RHF/6-31G* at the SQuIRL geometry, isosurface 0.002 e/a0^3",
+ "molecules": [
+  {
+   "id": "17865",
+   "smiles": "OC1CC11C2CC1O2",
+   "row": 42625,
+   "split": [
+    "test"
+   ],
+   "n_atoms": 16,
+   "dipole_true_au": [
+    0.1376,
+    0.1455,
+    -0.1105
+   ],
+   "dipole_pred_au": [
+    0.0324,
+    0.0955,
+    -0.07
+   ],
+   "cube": "dens/17865.cube",
+   "cube_sha256": "8115ac97d6bf5fcebc116375404d7ccffc7140826f7d84c4398a23e8e8ce9123"
+  },
+  {
+   "id": "114486",
+   "smiles": "OCC1CC2N=COC12",
+   "row": 16098,
+   "split": [
+    "test"
+   ],
+   "n_atoms": 18,
+   "dipole_true_au": [
+    0.4872,
+    0.0948,
+    0.546
+   ],
+   "dipole_pred_au": [
+    0.5018,
+    0.1105,
+    0.5439
+   ],
+   "cube": "dens/114486.cube",
+   "cube_sha256": "f175eada16c54a2533c7af56266a8e2cdb8be7383cb5c55b9f8e1b77085e2d33"
+  },
+  {
+   "id": "39201",
+   "smiles": "C1OC2C=CC3C1OC23",
+   "row": 66333,
+   "split": [
+    "test"
+   ],
+   "n_atoms": 17,
+   "dipole_true_au": [
+    -0.454,
+    -0.2572,
+    -0.8698
+   ],
+   "dipole_pred_au": [
+    -0.4641,
+    -0.1938,
+    -0.8649
+   ],
+   "cube": "dens/39201.cube",
+   "cube_sha256": "d125483dcc64f395129ffa498284fe57ae2eba4deec027a9052bcf0b233febf0"
+  },
+  {
+   "id": "77762",
+   "smiles": "CC1C2C(=O)C1C21CC1",
+   "row": 109176,
+   "split": [
+    "test"
+   ],
+   "n_atoms": 19,
+   "dipole_true_au": [
+    -1.1589,
+    -0.5483,
+    -0.2997
+   ],
+   "dipole_pred_au": [
+    -1.2112,
+    -0.5988,
+    -0.3134
+   ],
+   "cube": "dens/77762.cube",
+   "cube_sha256": "9dbfd5934f138df5fb9f6810d3083949ca94884f2f1d2ceb598b3425ca056bb1"
+  },
+  {
+   "id": "71082",
+   "smiles": "CC12OC3C(=O)C1C23C",
+   "row": 101755,
+   "split": [
+    "test"
+   ],
+   "n_atoms": 17,
+   "dipole_true_au": [
+    -1.307,
+    1.1372,
+    -0.5271
+   ],
+   "dipole_pred_au": [
+    -1.1822,
+    1.0327,
+    -0.359
+   ],
+   "cube": "dens/71082.cube",
+   "cube_sha256": "4c688dc8a7530432e7cf53f5fb2f3cbcf2a6e8c5b587e5ebb29c91a3c7e972ef"
+  },
+  {
+   "id": "50189",
+   "smiles": "O=CN1CC2C(C#N)C12",
+   "row": 78541,
+   "split": [
+    "test"
+   ],
+   "n_atoms": 15,
+   "dipole_true_au": [
+    0.9829,
+    1.8433,
+    1.6624
+   ],
+   "dipole_pred_au": [
+    0.9544,
+    1.8285,
+    1.6245
+   ],
+   "cube": "dens/50189.cube",
+   "cube_sha256": "7cecc6939190ed9a0d871864ce5ed2c2e80c6f58c6166096557c54a746a57906"
+  },
+  {
+   "id": "90694",
+   "smiles": "[NH3+]C1CN2C1C2C([O-])=O",
+   "row": 123545,
+   "split": [
+    "test"
+   ],
+   "n_atoms": 17,
+   "dipole_true_au": [
+    3.7025,
+    -1.6858,
+    -5.3291
+   ],
+   "dipole_pred_au": [
+    3.6706,
+    -1.7891,
+    -5.2592
+   ],
+   "cube": "dens/90694.cube",
+   "cube_sha256": "1bd3fb93f960b2715a054b7c044149b62ff4d9c31fb5a174ad27ddc01a32a2cf"
+  }
+ ]
+}

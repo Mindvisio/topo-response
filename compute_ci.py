@@ -104,8 +104,13 @@ def main():
                             ('tda', 'random', 'tda-random'),
                             ('random', 'none', 'random-baseline')]:
             m, lo, hi, p = paired(res[(prop, A)], res[(prop, B)])
+            flag = 'n.s.'
+            if p == p and p < 0.05 / 6:
+                flag = 'significant (survives Holm over the 6 reported tests)'
+            elif p == p and p < 0.05:
+                flag = 'nominal only (does NOT survive Holm)'
             print('%-7s %-16s %+.4f   [%+.4f, %+.4f]   p=%.3f %s'
-                  % (prop, label, m, lo, hi, p, 'SIG' if (p == p and p < 0.05) else 'n.s.'))
+                  % (prop, label, m, lo, hi, p, flag))
     print('\nSix comparisons are reported; Holm over this family requires p < %.4f for the smallest.' % (0.05 / 6))
 
 

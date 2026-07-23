@@ -3,7 +3,7 @@
 Left panel  : ball-and-stick geometry with the true and predicted dipole vectors.
 Right panel : the RHF/6-31G* electron density isosurface, coloured by the
               electrostatic potential rebuilt from the fitted charges.
-Run under a virtual display:  xvfb-run -a python3 render_hero.py 101807
+Run under a virtual display:  xvfb-run -a python3 render_hero.py 90694
 """
 import json, re, sys
 import numpy as np
@@ -202,7 +202,7 @@ def aim_camera(ren, center, mu, zoom=1.3):
 
 
 def main():
-    mid = sys.argv[1] if len(sys.argv) > 1 else '101807'
+    mid = sys.argv[1] if len(sys.argv) > 1 else '90694'
     W, H, SS = 1680, 780, 2
     html = open('index.html').read()
     MOLS = json.loads(re.search(r'const MOLS = (\[.*?\]);', html, re.S).group(1))

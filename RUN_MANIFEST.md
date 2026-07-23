@@ -3,7 +3,7 @@
 Question: does a persistent-homology (TDA) descriptor injected via FiLM conditioning improve an E(3)-equivariant PaiNN at predicting molecular dipole vector and polarizability tensor?
 
 ## Environment
-See requirements.txt (torch 2.4.1+cu121, schnetpack 2.1.1, e3nn 0.6.0, giotto-tda 0.6.0, rdkit 2026.3.4, pytorch-lightning 2.6.5). Single V100 32GB.
+See requirements.txt for the direct pins (torch 2.4.1+cu121, schnetpack 2.1.1, e3nn 0.6.0, giotto-tda 0.6.0, rdkit 2026.3.4, pytorch-lightning 2.6.5), requirements-full.txt for the complete 134-package freeze of the training environment, and requirements-assets.txt for the extra packages needed only to regenerate the viewer/README assets (pyscf, vtk, pillow, plus the xvfb system package). Single V100 32GB.
 
 ## Data (SQuIRL / QM9, 133883 molecules)
 - Dipole stored in ATOMIC UNITS (h5 metadata mislabels Debye); converted a.u.->Debye x2.541746 at eval.
@@ -51,4 +51,4 @@ TDACondition is identity-initialised, so a freshly built conditioned model emits
 Relative errors are at float32 round-off, so both heads remain E(3)-equivariant under rotation, reflection and translation with the learned conditioning switched on -- not merely at initialisation. Batch: 24 molecules from the topology-OOD split, geometries centred before each forward pass.
 
 ## Checkpoints
-44 configs x (best,last) on sci-node /root/topores/ckpt_*/ (zip-verified), naming ckpt[_polar]_<split>_<cond>_s<seed>. Git-excluded; re-derivable from this manifest + pinned env + seeds.
+44 configs x (best,last) on sci-node /root/topores/ckpt_*/ (zip-verified), naming ckpt[_polar]_<split>_<cond>_s<seed>. Git-excluded. The pipeline is rerunnable from this manifest + pinned env + seeds; the exact checkpoint files are archived on sci-node rather than regenerated bit-for-bit (cuDNN/GPU nondeterminism means a rerun reproduces the reported metrics, not identical weights).

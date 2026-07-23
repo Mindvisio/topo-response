@@ -44,7 +44,7 @@ Five seeds per arm (baseline / TDA / matched-capacity random), both properties, 
 
 No advantage of geometric z_PH + FiLM conditioning over the plain equivariant baseline or over the matched-capacity random control was detected. The one nominally significant effect (polarizability, TDA worse than baseline) does not survive multiple-comparison correction over the six reported tests.
 
-This is a qualitative negative result. A separate bonus experiment (`RESIDUAL_PROBE_REPORT.md`) freezes the baseline and asks whether `z_PH` can linearly predict the part of its residual an equivariance-preserving correction may touch; it cannot, beyond a matched random control — reinforcing the same conclusion. It does **not** establish that persistent homology is uninformative or equivalent to noise: no equivalence margin was pre-specified, the confidence intervals remain wide, and the finding does not generalise beyond this descriptor, conditioning scheme, dataset and split. `RUN_MANIFEST.md` states the caveats in full.
+This is a qualitative negative result. A separate bonus experiment (`RESIDUAL_PROBE_REPORT.md`) freezes the baseline and asks whether `z_PH` can linearly predict the part of its residual an equivariance-preserving correction may touch; within that linear probe no signal was detected beyond matched random and shuffled controls, consistent with the result above. It does **not** establish that persistent homology is uninformative or equivalent to noise: no equivalence margin was pre-specified, the confidence intervals remain wide, and the finding does not generalise beyond this descriptor, conditioning scheme, dataset and split. `RUN_MANIFEST.md` states the caveats in full.
 
 ## Structure
 

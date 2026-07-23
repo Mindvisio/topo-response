@@ -19,6 +19,9 @@ import numpy as np
 from schnetpack.data import ASEAtomsData
 
 AU2D = 2.541746
+# Exported dipoles are ALREADY in Debye (export_baseline_predictions.py converts),
+# so the small-dipole floor is a plain 0.1 D and must not be divided by AU2D again.
+DIPOLE_FLOOR_D = 0.1
 DB = 'cache/squirl.db'
 
 
@@ -63,17 +66,19 @@ def dipole_targets(pred, target, S, basis):
         n = np.linalg.norm(pred, axis=1, keepdims=True)
         u = np.where(n > 1e-9, pred / np.maximum(n, 1e-9), 0.0)
         a = (r * u).sum(1)                               # scalar projection onto unit(mu_base)
-        small = (n[:, 0] < 0.1 / AU2D)                   # |mu_base| < 0.1 D -> correction is ~0
-        return a[:, None], ['a'], small
+        small = (n[:, 0] < DIPOLE_FLOOR_D)               # |mu_base| < 0.1 D -> correction is ~0
+        return a[:, None], ['a'], small, np.ones(N)      # 1x1 Gram: conditioning is trivially 1
     Smu = np.einsum('nij,nj->ni', S, pred)
     S2mu = np.einsum('nij,nj->ni', S, Smu)
     B = np.stack([pred, Smu, S2mu], axis=2)              # (N,3,3): columns are the basis vectors
     # per-molecule least squares of r onto the 3 basis vectors, ridge-stabilised
-    G = np.einsum('nik,nil->nkl', B, B) + 1e-6 * np.eye(3)
+    G_raw = np.einsum('nik,nil->nkl', B, B)
+    cond = np.linalg.cond(G_raw)
+    G = G_raw + 1e-6 * np.eye(3)
     rhs = np.einsum('nik,ni->nk', B, r)
     coef = np.linalg.solve(G, rhs)                       # (N,3) = [a-ish, b, c]
-    small = (np.linalg.norm(pred, axis=1) < 0.1 / AU2D)
-    return coef, ['coef0', 'coef1', 'coef2'], small
+    small = (np.linalg.norm(pred, axis=1) < DIPOLE_FLOOR_D)
+    return coef, ['coef0', 'coef1', 'coef2'], small, cond
 
 
 # ---- polar targets: same idea on symmetric 3x3 tensors, Frobenius inner product ----
@@ -101,12 +106,13 @@ def polar_targets(pred, target, S, basis):
     for i in range(k):
         for j in range(k):
             G[:, i, j] = fro(B[:, i], B[:, j])
-    G += 1e-6 * np.eye(k)
+    cond = np.linalg.cond(G)
+    G = G + 1e-6 * np.eye(k)
     rhs = np.stack([fro(B[:, i], R) for i in range(k)], axis=1)
     coef = np.linalg.solve(G, rhs)                       # (N,k)
     aniso = np.sqrt(np.maximum(fro(Q, Q), 0.0))
     near_iso = aniso < 0.05 * np.sqrt(fro(Pm, Pm) + 1e-12)  # ill-conditioned b when almost isotropic
-    return coef, names, near_iso
+    return coef, names, near_iso, cond
 
 
 # ---- reconstruct the corrected prediction from fitted coefficients ----
@@ -154,36 +160,43 @@ def polar_metrics(pred, target):
     return dict(Frob=frob, elem=elem, iso=iso, eigMAE=eig)
 
 
-def ridge_fit(Xtr, Ytr, Xva, alphas):
-    """Closed-form multi-output ridge; pick alpha by val MSE, refit on train+val."""
+def _ridge_solve(X, Y, alpha):
+    """Closed-form ridge with the intercept column left UNPENALISED.
+
+    The last design column is the constant 1.  Penalising it would shrink the
+    fitted mean toward zero, so a large alpha would not reduce the probe to
+    'predict the training mean' and a negative R^2 could no longer be read as
+    'no better than predicting the mean'.
+    """
     from numpy.linalg import solve
-    d = Xtr.shape[1]
-    best, best_mse = None, np.inf
-    for al in alphas:
-        W = solve(Xtr.T @ Xtr + al * np.eye(d), Xtr.T @ Ytr)
-        mse = ((Xva @ W - YVA_HOLDER['y']) ** 2).mean()
-        if mse < best_mse:
-            best_mse, best = mse, al
-    return best
-
-
-YVA_HOLDER = {}
+    d = X.shape[1]
+    P = alpha * np.eye(d)
+    P[-1, -1] = 0.0
+    return solve(X.T @ X + P, X.T @ Y)
 
 
 def fit_predict(Z, coef_tr, coef_va, alphas):
-    """Standardise on train, choose alpha on val, refit on train+val, return test coeffs."""
-    Ztr, Zva, Zte = Z['train'], Z['val'], Z['test']
-    Ztr_s, Zva_s, Zte_s = standardize(Ztr, Zva, Zte)
-    Ztr_s = np.hstack([Ztr_s, np.ones((len(Ztr_s), 1))])
-    Zva_s = np.hstack([Zva_s, np.ones((len(Zva_s), 1))])
-    Zte_s = np.hstack([Zte_s, np.ones((len(Zte_s), 1))])
-    from numpy.linalg import solve
-    d = Ztr_s.shape[1]
-    YVA_HOLDER['y'] = coef_va
-    al = ridge_fit(Ztr_s, coef_tr, Zva_s, alphas)
-    Xtv = np.vstack([Ztr_s, Zva_s]); Ytv = np.vstack([coef_tr, coef_va])
-    W = solve(Xtv.T @ Xtv + al * np.eye(d), Xtv.T @ Ytv)
-    return Zte_s @ W, al
+    """Standardise on train, choose alpha on val, refit on train+val, predict test.
+
+    Coefficient targets are standardised per column on train as well: the
+    secondary bases mix tensors of different physical scale, so an unscaled
+    multi-output MSE would let one coordinate dominate the alpha choice.
+    """
+    add1 = lambda A: np.hstack([A, np.ones((len(A), 1))])
+    Ztr_s, Zva_s, Zte_s = standardize(Z['train'], Z['val'], Z['test'])
+    Ztr_s, Zva_s, Zte_s = add1(Ztr_s), add1(Zva_s), add1(Zte_s)
+    ymu = coef_tr.mean(0)
+    ysd = coef_tr.std(0); ysd[ysd < 1e-12] = 1.0
+    Ytr = (coef_tr - ymu) / ysd
+    Yva = (coef_va - ymu) / ysd
+    best, best_mse = alphas[0], np.inf
+    for al in alphas:
+        W = _ridge_solve(Ztr_s, Ytr, al)
+        mse = ((Zva_s @ W - Yva) ** 2).mean()
+        if mse < best_mse:
+            best_mse, best = mse, al
+    W = _ridge_solve(np.vstack([Ztr_s, Zva_s]), np.vstack([Ytr, Yva]), best)
+    return (Zte_s @ W) * ysd + ymu, best
 
 
 def probe_r2(coef_true_te, coef_pred_te):
@@ -265,13 +278,16 @@ def build_targets(prop, ex, split_ids, S_by_split, basis):
     tgt = {}
     masks = {}
     names = None
+    cond_test = None
     for s in ('train', 'val', 'test'):
         fn = dipole_targets if prop == 'dipole' else polar_targets
-        coef, nm, mask = fn(ex[s]['pred'], ex[s]['target'], S_by_split[s], basis)
+        coef, nm, mask, cond = fn(ex[s]['pred'], ex[s]['target'], S_by_split[s], basis)
         coef = coef.copy()
         coef[mask] = 0.0                                 # don't ask the probe to fit noise where correction is defined-zero
         tgt[s] = coef; masks[s] = mask; names = nm
-    return tgt, masks, names
+        if s == 'test':
+            cond_test = cond
+    return tgt, masks, names, cond_test
 
 
 def arm_realizations(kind, seed):
@@ -333,14 +349,17 @@ def main():
             ids = {s: ex[s]['idx'] for s in ('train', 'val', 'test')}
             base = (dipole_metrics if prop == 'dipole' else polar_metrics)(ex['test']['pred'], ex['test']['target'])
             for basis in a.bases:
-                tgt, masks, names = build_targets(prop, ex, ids, S_by, basis)
+                tgt, masks, names, cond_te = build_targets(prop, ex, ids, S_by, basis)
                 frac_small = float(masks['test'].mean())
+                cond_med = float(np.median(cond_te))
+                cond_hi = float((cond_te > 1e6).mean())   # share with a badly conditioned basis
                 for arm in a.arms:
                     if arm == 'null':
                         row = dict(property=prop, seed=seed, basis=basis, arm='null', realization=0,
                                    alpha='', baseline=base[pm], corrected=base[pm], delta=0.0,
                                    probe_r2_mean='', coef_mae_mean='', spearman_mean='',
-                                   frac_small=frac_small, sens_delta='')
+                                   frac_small=frac_small, cond_median=cond_med,
+                                   cond_frac_gt_1e6=cond_hi, sens_delta='')
                         for k, v in base.items():
                             row['base_' + k] = v; row['corr_' + k] = v
                         rows.append(row); continue
@@ -359,15 +378,18 @@ def main():
                                    probe_r2_mean=float(np.mean(res['r2'])),
                                    coef_mae_mean=float(np.mean(res['coef_mae'])),
                                    spearman_mean=float(np.mean(res['spearman'])),
-                                   frac_small=frac_small, sens_delta=sens)
+                                   frac_small=frac_small, cond_median=cond_med,
+                                   cond_frac_gt_1e6=cond_hi, sens_delta=sens)
                         for k, v in base.items():
                             row['base_' + k] = v
                         for k, v in m.items():
                             row['corr_' + k] = v
                         rows.append(row)
-            print('%s seed %d done (frac_small=%.4f)' % (prop, seed, frac_small), flush=True)
+            print('%s seed %d done (frac_small=%.4f, cond_median=%.3g)'
+                  % (prop, seed, frac_small, cond_med), flush=True)
     cols = ['property', 'seed', 'basis', 'arm', 'realization', 'alpha', 'baseline', 'corrected',
-            'delta', 'probe_r2_mean', 'coef_mae_mean', 'spearman_mean', 'frac_small', 'sens_delta']
+            'delta', 'probe_r2_mean', 'coef_mae_mean', 'spearman_mean', 'frac_small',
+            'cond_median', 'cond_frac_gt_1e6', 'sens_delta']
     extra = sorted({k for r in rows for k in r} - set(cols))
     with open(a.out, 'w', newline='') as f:
         w = csv.DictWriter(f, fieldnames=cols + extra)
