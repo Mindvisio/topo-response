@@ -103,12 +103,21 @@ def _rings_and_zph():
 def fig_zph_structure():
     """Does the descriptor encode ring count at all? PCA plus a linear read-out."""
     rings, z = _rings_and_zph()
-    zs = (z - z.mean(0)) / (z.std(0) + 1e-9)
-    U, S, Vt = np.linalg.svd(zs - zs.mean(0), full_matrices=False)
+    # PCA on the mean-centered Betti curves.  Do NOT standardise per column: 35 of the
+    # 130 entries have zero variance (grid bins identical for every molecule) and
+    # dividing by their standard deviation turns numerical dust into the leading
+    # component, collapsing the whole cloud into a line.
+    X = z[:, :2 * BINS]
+    U, S, Vt = np.linalg.svd(X - X.mean(0), full_matrices=False)
     pcs = U[:, :2] * S[:2]
     var = (S ** 2 / (S ** 2).sum())[:2] * 100
+    if np.corrcoef(pcs[:, 0], rings)[0, 1] < 0:          # orient PC1 so more rings = right
+        pcs[:, 0] *= -1
 
     # honest read-out: fit on a random half, score on the other half
+    sd = z.std(0)
+    keep = sd > 1e-6                                     # drop the degenerate bins here too
+    zs = (z[:, keep] - z[:, keep].mean(0)) / sd[keep]
     rng = np.random.default_rng(0)
     perm = rng.permutation(len(zs))
     tr, te = perm[:len(perm) // 2], perm[len(perm) // 2:]
@@ -148,7 +157,7 @@ def fig_zph_structure():
     ax.set_ylabel('PC1')
     ax.set_title('PC1 tracks ring count monotonically', loc='left')
     ax.text(.02, .03, 'linear read-out of ring count from z_PH\n'
-                      'held-out R$^2$ = %.2f, MAE = %.2f rings' % (r2, mae),
+                      'held-out $R^2$ = %.2f, MAE = %.2f rings' % (r2, mae),
             transform=ax.transAxes, fontsize=8.8, va='bottom',
             bbox=dict(boxstyle='round,pad=0.4', fc='#f2f4f7', ec='#c9ced6'))
 
@@ -170,9 +179,9 @@ def fig_betti_curves():
     cols = [cmap(i / (len(groups) - 1)) for i in range(len(groups))]
     fig, axes = plt.subplots(1, 2, figsize=(10.6, 4.3), sharex=True)
     for ax, curves, lab, note in (
-            (axes[0], h0, 'H$_0$ - connected components',
+            (axes[0], h0, '$H_0$ - connected components',
              'starts at the atom count, merges as the radius grows'),
-            (axes[1], h1, 'H$_1$ - independent loops',
+            (axes[1], h1, '$H_1$ - independent loops',
              'the channel that carries ring information')):
         for g, c in zip(groups, cols):
             sel = (rings == g) if g < 4 else (rings >= 4)

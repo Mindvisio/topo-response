@@ -64,7 +64,7 @@ defined to zero and are reported rather than silently mixed in.
 
 Two independent readouts, not to be blurred:
 
-1. **Probe R^2** on the 66,485-molecule test set — estimated on many molecules, so
+1. **Probe R²** on the 66,485-molecule test set — estimated on many molecules, so
    it is far less seed-limited than the physical metric. Does `z_PH` predict the
    correction coefficients better than the random control?
 2. **Physical-metric delta** (compMAE for dipole, Frobenius for polar), paired
@@ -72,14 +72,14 @@ Two independent readouts, not to be blurred:
    same width. Does the correction actually lower the error, and by more than the
    random control?
 
-The descriptor is judged informative only if the probe R^2 clears the random
+The descriptor is judged informative only if the probe R² clears the random
 control *and* the physical delta favours TDA over random with a Holm-corrected
 p < 0.05 over the six primary-basis `tda`-vs-control tests. A non-significant
 difference is reported as "no effect detected", never as proven equivalence.
 
 ## Results
 
-Probe R^2 on held-out coefficients (mean over seeds):
+Probe R² on held-out coefficients (mean over seeds):
 
 | basis | property | tda | random | shuffled |
 | --- | --- | --- | --- | --- |
@@ -88,12 +88,12 @@ Probe R^2 on held-out coefficients (mean over seeds):
 | secondary (exploratory) | dipole | -0.0001 | -0.0000 | -0.0000 |
 | secondary (exploratory) | polar | -0.0002 | -0.0002 | -0.0002 |
 
-R^2 here is measured against a **test-mean reference** (`ss_tot` uses the mean of
-the test coefficients themselves), so `R^2 <= 0` states that the probe has no
+R² here is measured against a **test-mean reference** (`ss_tot` uses the mean of
+the test coefficients themselves), so `R² ≤ 0` states that the probe has no
 positive out-of-sample explanatory power relative to that reference — a stronger
 and more precise statement than any claim about a training mean. Every value is at
 or below zero, and TDA never separates from the matched random control. In the
-secondary bases the selected `alpha` drives the fitted slope to zero, so R^2
+secondary bases the selected `alpha` drives the fitted slope to zero, so R²
 collapses to the intercept-only value.
 
 Physical-metric paired differences (n=5, topology-OOD; positive = correction made
@@ -149,7 +149,7 @@ Its specification was fixed before this probe was run, but after the Ridge resul
 on the same test set had been seen — so it is a follow-up analysis, not an
 independent confirmatory experiment.
 
-Probe R^2 (test-mean reference):
+Probe R² (test-mean reference):
 
 | property | tda (mean) | tda (median) | random | shuffled |
 | --- | --- | --- | --- | --- |
@@ -158,7 +158,7 @@ Probe R^2 (test-mean reference):
 
 Medians are over the five seed-level means, matching the unit of replication (the
 fit-level median over all 15 individual dipole fits is -0.042, a diagnostic rather
-than a summary). The dipole `tda` mean is pulled down by one seed at R^2 = -0.27,
+than a summary). The dipole `tda` mean is pulled down by one seed at R² = -0.27,
 whose worst single fit reaches -0.68, so the median is the more representative
 summary.
 
@@ -172,7 +172,7 @@ Physical-metric paired differences (n=5; positive = correction made it worse):
 Holm over this family: the smallest adjusted p is 0.168 (polar `tda` vs `null`,
 and its sign is positive, i.e. the correction hurts); nothing is significant.
 
-All mean R^2 values are non-positive, so the nonlinear probe likewise has no
+All mean R² values are non-positive, so the nonlinear probe likewise has no
 positive out-of-sample explanatory power. Individual values are not uniformly
 ordered — for the polarizability `tda` sits numerically above its controls
 (-0.141 against -0.148), for the dipole below them — but no beneficial
@@ -185,9 +185,9 @@ network found transferable structure, and no such claim is made here.
 
 ## Conclusion
 
-Neither probe achieved a positive out-of-sample R^2, and TDA showed no beneficial
+Neither probe achieved a positive out-of-sample R², and TDA showed no beneficial
 physical-metric advantage over the controls — for either property, on the
-topology-OOD split. Individual R^2 values are not uniformly ordered (for the
+topology-OOD split. Individual R² values are not uniformly ordered (for the
 polarizability the nonlinear `tda` mean sits slightly above its controls, for the
 dipole below), so the claim is about the absence of a usable advantage, not about
 `z_PH` being uniformly the worst input. This is consistent with the main 5-seed

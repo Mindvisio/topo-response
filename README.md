@@ -80,7 +80,7 @@ the dataset's own terms. Cite SQuIRL alongside this repository if you use them.
 | SQuIRL | Spectral Quantum Chemistry and Infrared Resonance Library, the source dataset |
 | MAE / compMAE | mean absolute error; compMAE averages it over the three Cartesian components |
 | Frobenius error | the norm of the difference between predicted and reference 3x3 tensors |
-| R^2 | fraction of variance explained out of sample; R^2 <= 0 means no better than predicting the mean |
+| R² | fraction of variance explained out of sample; R² ≤ 0 means no better than predicting the mean |
 | CI | confidence interval |
 | MLP | multilayer perceptron |
 | RHF | restricted Hartree-Fock, the level of theory behind the figure's electron density |
@@ -92,11 +92,11 @@ the dataset's own terms. Cite SQuIRL alongside this repository if you use them.
 
 A null result invites the question of whether `z_PH` carries any topological information in
 the first place. It does. Ring count is linearly decodable from the 130-dimensional vector
-with a held-out R^2 of 0.62 (mean absolute error 0.57 rings), and the first principal
+with a held-out R² of 0.62 (mean absolute error 0.57 rings), and the first principal
 component orders molecules by ring count on its own.
 
 ![PCA of z_PH colored by ring count, and the distribution of PC1 per ring count. The
-components separate by topology and a linear read-out recovers ring count with R^2 = 0.62.](assets/fig_zph_structure.png)
+components separate by topology and a linear read-out recovers ring count with R² = 0.62.](assets/fig_zph_structure.png)
 
 The descriptor is literally the two Betti curves below, sampled on a fixed grid and concatenated with two persistence entropies. H$_1$ counts independent loops, so it responds directly to rings; the curves separate cleanly by ring count.
 

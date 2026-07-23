@@ -17,7 +17,7 @@ independent confirmatory experiment):
     the unit of replication stays the seed (n=5);
   * each fitted model evaluated once on test, with test results used for neither
     training, early stopping nor model selection; both readouts reported (probe
-    R^2 against a test-mean reference, and the physical metric delta).
+    R² against a test-mean reference, and the physical metric delta).
 
 Analyzed as its own family of six tests rather than as an extension of the Ridge
 family, so it does not retroactively change that family's multiplicity or revise

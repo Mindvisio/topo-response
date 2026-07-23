@@ -14,7 +14,7 @@ PRIMARY_METRIC = {'dipole': 'compMAE', 'polar': 'Frob'}
 
 def _safe_mean(vals):
     """Mean over the non-NaN entries; NaN if there are none (the null arm fits
-    no probe, so it has no R^2 -- nanmean would warn on an empty slice)."""
+    no probe, so it has no R² -- nanmean would warn on an empty slice)."""
     v = [x for x in vals if x == x]
     return float(np.mean(v)) if v else float('nan')
 

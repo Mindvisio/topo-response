@@ -5,7 +5,7 @@ FiLM path. This asks a strictly easier, more direct question: freeze the baselin
 take its error on each molecule, and see whether z_PH linearly predicts the part of
 that error an equivariance-preserving correction is allowed to touch. A null result
 here is much stronger evidence that z_PH carries no usable residual signal than the
-main negative alone -- and unlike the main study, the probe R^2 is measured on the
+main negative alone -- and unlike the main study, the probe R² is measured on the
 full 66,485-molecule test set, so it is decisive at a single seed.
 
 Coefficients are invariant (regressed from invariant z_PH); the correction is built
@@ -165,7 +165,7 @@ def _ridge_solve(X, Y, alpha):
 
     The last design column is the constant 1.  Penalizing it would shrink the
     fitted mean toward zero, so a large alpha would not reduce the probe to
-    'predict the training mean' and a negative R^2 could no longer be read as
+    'predict the training mean' and a negative R² could no longer be read as
     'no better than predicting the mean'.
     """
     from numpy.linalg import solve
@@ -200,9 +200,9 @@ def fit_predict(Z, coef_tr, coef_va, alphas):
 
 
 def probe_r2(coef_true_te, coef_pred_te):
-    """R^2 of the probe on the held-out coefficients, against a TEST-MEAN reference.
+    """R² of the probe on the held-out coefficients, against a TEST-MEAN reference.
 
-    ss_tot uses the mean of the test coefficients themselves, so R^2 <= 0 means
+    ss_tot uses the mean of the test coefficients themselves, so R² ≤ 0 means
     'no positive out-of-sample explanatory power relative to a test-mean
     reference' -- not the weaker statement about a training mean.
     """
