@@ -3,7 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>TopoResponse — Dipole Prediction Viewer</title>
+<title>TopoResponse — dipole prediction viewer</title>
+<meta name="description" content="Interactive viewer for TopoResponse: true vs predicted molecular dipole vectors from an E(3)-equivariant PaiNN model, on held-out molecules of the SQuIRL dataset (QM9 geometries). The accompanying study found no measurable benefit from persistent-homology conditioning.">
+<link rel="canonical" href="https://mindvisio.github.io/topo-response/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://mindvisio.github.io/topo-response/">
+<meta property="og:title" content="TopoResponse — dipole prediction viewer">
+<meta property="og:description" content="True vs predicted molecular dipole vectors from an E(3)-equivariant model, on held-out molecules.">
+<meta property="og:image" content="https://mindvisio.github.io/topo-response/assets/hero_90694.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -102,11 +110,11 @@
 </div>
 <div class="topbar">
   <div class="brand">
-    <p class="eyebrow">TopoResponse · E(3)-equivariant</p>
+    <p class="eyebrow" title="Equivariant under rotation, reflection and translation">TopoResponse · E(3)-equivariant</p>
     <h1 class="title">Dipole prediction <b>μ</b></h1>
-    <p class="subtitle">True vs predicted molecular dipole on SQuIRL geometries.</p>
+    <p class="subtitle">True vs predicted molecular dipole on <span title="Dataset of 133,883 QM9 molecules with precomputed dipole vectors and polarizability tensors">SQuIRL</span> geometries.</p>
   </div>
-  <div class="status"><span class="dot"></span>predicted = trained PaiNN baseline · held-out test molecules</div>
+  <div class="status"><span class="dot"></span>predicted = trained <span title="Polarizable Atom Interaction Neural Network, an equivariant message-passing architecture">PaiNN</span> baseline · held-out test molecules</div>
 </div>
 <div class="panel" id="panel">
   <div class="selwrap">
@@ -135,7 +143,7 @@
     </div>
   </div>
   <div class="rep" id="rep">
-    <button data-rep="0" class="on">ball+stick</button>
+    <button data-rep="0" class="on">ball-and-stick</button>
     <button data-rep="1">surface</button>
     <button data-rep="2">density</button>
   </div>
@@ -145,7 +153,7 @@
   <div class="joyknob" id="joyknob"></div>
   <span class="joylab">rotate</span>
 </div>
-<div class="hint">joystick to rotate · ← → or dropdown to switch · scroll to zoom</div>
+<div class="hint">joystick to rotate · ← → or dropdown to switch · scroll to zoom · <a href="https://github.com/Mindvisio/topo-response" target="_blank" rel="noopener">code &amp; results</a></div>
 <script>
 const MOLS = [
 {"id":"17865","n":16,"smiles":"OC1CC11C2CC1O2","atoms":[["O",0.2085,1.3822,-0.0906],["C",0.0815,-0.0101,-0.0104],["C",-0.4151,-0.7195,1.2431],["C",-1.2345,-0.7005,-0.0097],["C",-2.6839,-0.2612,-0.2776],["C",-2.5094,-0.6759,-1.7597],["C",-1.9269,-1.7854,-0.8474],["O",-3.1228,-1.6468,0.0247],["H",-0.4947,1.7852,0.4288],["H",0.9046,-0.4724,-0.5473],["H",0.0752,-1.6373,1.5534],["H",-0.7508,-0.0987,2.0703],["H",-3.2618,0.556,0.1559],["H",-3.4348,-0.9442,-2.2705],["H",-1.8169,-0.0979,-2.3759],["H",-1.5946,-2.7936,-1.0949]],"dip":[0.1376,0.1455,-0.1105],"mag":0.2287},
