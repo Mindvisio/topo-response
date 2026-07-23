@@ -16,7 +16,7 @@ See requirements.txt for the direct pins (torch 2.4.1+cu121, schnetpack 2.1.1, e
 ## Audit fixes (all verified)
 1. Betti on fixed [0,1] grid (was per-molecule -> incomparable bins).
 2. SubtractCenterOfGeometry in all train/eval -> polarizability head translation-invariant; full E(3) of BOTH heads verified (rot/refl/trans ~1e-6).
-3. Identity-init FiLM (zero-init last layer -> TDA==baseline at init) + train-only standardization + clip[-10,10].
+3. Identity-init FiLM (zero-init last layer -> TDA==baseline at init) + train-only standardisation + clip[-10,10].
 4. Group split (0 leakage); shuffled control permuted WITHIN split; corrected metrics (true vector MAE; tensor Frobenius/anisotropy/eigenvalue/principal-axis; a.u.->Debye; dipole angle only for |mu|>0.1 D).
 
 ## Runs

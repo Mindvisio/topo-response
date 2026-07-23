@@ -1,12 +1,12 @@
 # TopoResponse
 
-**Topology-conditioned E(3)-equivariant prediction of molecular dipole moments and polarizability tensors.**
+**Does persistent homology help an E(3)-equivariant network predict molecular dipole moments and polarizability tensors? A controlled study whose answer, in this configuration, is no.**
 
-DLS course project. Given a molecule's 3D geometry, predict its dipole moment vector (μ, an ℓ=1 vector) and dipole polarizability tensor (α, ℓ=0 ⊕ ℓ=2) with an E(3)-equivariant network, and study whether **persistent-homology (TDA) features** add predictive value beyond a strong equivariant model — especially under **distribution shift**. The reported study uses the topology-OOD split; size- and conformation-OOD were scoped but not run.
+Course project for the Deep Learning School (DLS). Given a molecule's 3D geometry, predict its dipole moment vector (μ, an ℓ=1 vector) and dipole polarizability tensor (α, ℓ=0 ⊕ ℓ=2) with an E(3)-equivariant network, and study whether **persistent-homology features**, drawn from topological data analysis (TDA), add predictive value beyond a strong equivariant model — especially under **distribution shift**. The reported study uses the topology-OOD split; size- and conformation-OOD were scoped but not run.
 
 ## Why
 
-Equivariant message passing (PaiNN, MACE, …) already predicts molecular response tensors well. Persistent homology contributes a **global, isometry-invariant, noise-robust** inductive bias that local message passing can miss. The question is whether that bias measurably helps, and where — the interesting regime is out-of-distribution generalization, not the saturated in-distribution benchmark. Honest expected outcome: modest accuracy gain + stronger robustness/OOD; rigorous negative controls make even a null result informative.
+Equivariant message passing (PaiNN, MACE, …) already predicts molecular response tensors well. Persistent homology contributes a **global, isometry-invariant, noise-robust** inductive bias that local message passing can miss. The question is whether that bias measurably helps, and where — the interesting regime is out-of-distribution (OOD) generalisation, not the saturated in-distribution benchmark. The prior expectation was a modest accuracy gain and better OOD robustness. It did not materialise (see [Status](#status)), which is exactly why the matched negative controls were built in from the start: they are what makes a null result informative rather than merely inconclusive.
 
 ## Data
 
@@ -15,7 +15,7 @@ Equivariant message passing (PaiNN, MACE, …) already predicts molecular respon
 ## Method
 
 - **Backbone**: E(3)-equivariant network (SchNetPack PaiNN) with dipole (ℓ=1) and polarizability (ℓ=0⊕ℓ=2) heads.
-- **TDA conditioning** (irrep-preserving): per-molecule H₀/H₁ persistence of the 3D point cloud → persistence features z_PH that gate channel mixing *within each irrep* (exact equivariance preserved), not appended to Cartesian components.
+- **TDA conditioning**, preserving every irreducible representation (*irrep*): per-molecule H₀/H₁ persistence of the 3D point cloud → persistence features z_PH that gate channel mixing *within each irrep* (exact equivariance preserved), not appended to Cartesian components.
 - **Splits**: random · topology-OOD (train few-ring → test ring-rich) · group-random (molecules grouped by canonical SMILES, whole groups assigned at random).
 - **Controls run**: shuffled z_PH, matched-capacity random features of equal dimension, and an element-augmented 4D persistence variant. A ring-count baseline, a larger-receptive-field baseline and a separate matched-parameter baseline were scoped but not run.
 - **Metrics**: dipole vector MAE + angular error; polarizability Frobenius, isotropic/anisotropic split, eigenvalue error; exact equivariance check.
@@ -42,14 +42,42 @@ Five seeds per arm (baseline / TDA / matched-capacity random), both properties, 
 | TDA - random | +0.0016, p=0.57 | -0.056, p=0.62 |
 | random - baseline | -0.0003, p=0.88 | +0.2816, p=0.114 |
 
-No advantage of geometric z_PH + FiLM conditioning over the plain equivariant baseline or over the matched-capacity random control was detected. The one nominally significant effect (polarizability, TDA worse than baseline) does not survive multiple-comparison correction over the six reported tests.
+No advantage of geometric z_PH conditioning through feature-wise linear modulation (FiLM) over the plain equivariant baseline or over the matched-capacity random control was detected. The one nominally significant effect (polarizability, TDA worse than baseline) does not survive multiple-comparison correction over the six reported tests.
 
 This is a qualitative negative result. A separate bonus experiment (`RESIDUAL_PROBE_REPORT.md`) freezes the baseline and asks whether `z_PH` can linearly predict the part of its residual an equivariance-preserving correction may touch; neither that linear probe nor a small nonlinear one detected signal beyond matched random and shuffled controls, consistent with the result above. It does **not** establish that persistent homology is uninformative or equivalent to noise: no equivalence margin was pre-specified, the confidence intervals remain wide, and the finding does not generalise beyond this descriptor, conditioning scheme, dataset and split. `RUN_MANIFEST.md` states the caveats in full.
 
+## Reproduce
+
+```bash
+pip install -r requirements.txt          # direct pins; requirements-full.txt is the exact freeze
+python compute_ci.py                     # the table above, straight from the committed results_5seed.csv
+PY=python RUN_MLP=1 bash run_residual_probe.sh   # the bonus probes end to end
+```
+
+`compute_ci.py` reads the committed CSV, so the headline statistics reproduce from a clean
+clone with no training run and no GPU. Reproducing the checkpoints themselves needs a GPU and
+the commands in [`RUN_MANIFEST.md`](RUN_MANIFEST.md), which also records seeds, hyperparameters,
+the equivariance check and every caveat attached to the result. Regenerating the viewer assets
+(density cubes, cover render) additionally needs `requirements-assets.txt` and a virtual display.
+
 ## Structure
 
-- `data_squirl.py` — SQuIRL loader (geometry, μ vector, α tensor) + splits
-- `build_index.py` — molecule index + split generation
-- `compute_zph.py` — persistent-homology (H₀/H₁) features
-- `train_dipole.py` — equivariant PaiNN dipole training
-- `index.html` — interactive dipole viewer
+**Data and features**
+- `data_squirl.py` — SQuIRL loader (geometry, μ vector, α tensor); `build_db.py`, `build_index.py` — database, molecule index, splits
+- `compute_zph.py` — persistent-homology (H₀/H₁) features; `compute_zph_elem4d.py` — element-augmented 4D variant
+- `make_grouprandom_split.py` — canonical-SMILES group split
+
+**Training and evaluation**
+- `train_dipole.py`, `train_dipole_tda.py`, `train_p3.py` — dipole training (baseline, conditioned, matrix runs)
+- `train_polar.py`, `train_p3_polar.py` — polarizability training
+- `eval_ood.py`, `eval_ood_polar.py` — held-out evaluation; `e3_test.py` — equivariance gate on trained checkpoints
+- `run_matrix.sh`, `s4b_run.sh`, `s4c_run.sh` — the seed matrix; `compute_ci.py` — paired statistics
+
+**Bonus: residual probes** (see [`RESIDUAL_PROBE_REPORT.md`](RESIDUAL_PROBE_REPORT.md))
+- `export_baseline_predictions.py` — freeze a baseline and export its predictions
+- `residual_probe.py` (Ridge) · `residual_probe_mlp.py` (nonlinear) · `analyze_residual_probe.py` · `test_probe_equivariance.py`
+- `run_residual_probe.sh` — the whole cycle, with input-integrity checks
+
+**Viewer and figures**
+- `index.html` — interactive dipole viewer; `viewer_infer.py`, `make_viewer_manifest.py` — its predictions and provenance
+- `make_density_cubes.py` — electron density + fitted charges; `render_hero.py` — the cover image
