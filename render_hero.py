@@ -81,7 +81,7 @@ def draw_labels(im, W, H, smiles):
     reg = fm.findfont(fm.FontProperties(family='DejaVu Sans'))
     bold = fm.findfont(fm.FontProperties(family='DejaVu Sans', weight='bold'))
     d = ImageDraw.Draw(im)
-    f_title = ImageFont.truetype(bold, 27)
+    f_title = ImageFont.truetype(bold, 20)
     f_small = ImageFont.truetype(reg, 17)
     grey = (150, 168, 190)
     rgb255 = lambda c: tuple(int(round(255 * x)) for x in c)
@@ -89,10 +89,6 @@ def draw_labels(im, W, H, smiles):
     d.text((28, H - 96), 'true \u03bc (solid)', font=f_small, fill=rgb255(TRUE_RGB))
     d.text((28, H - 70), 'predicted \u03bc (dashed)', font=f_small, fill=rgb255(PRED_RGB))
     d.text((28, H - 44), 'geometry + dipole', font=f_small, fill=grey)
-    x2 = W // 2 + 28
-    d.text((x2, H - 70), 'electron density, coloured by electrostatic potential', font=f_small, fill=grey)
-    d.text((x2, H - 44), 'negative', font=f_small, fill=(255, 115, 115))
-    d.text((x2 + d.textlength('negative ', font=f_small), H - 44), '/ positive', font=f_small, fill=(107, 163, 255))
 
 
 MAXV = {1: 1, 6: 4, 7: 4, 8: 2, 9: 1, 16: 6}
