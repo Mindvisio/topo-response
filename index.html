@@ -2,15 +2,18 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>TopoResponse — dipole prediction viewer</title>
-<meta name="description" content="Interactive viewer for TopoResponse: true vs predicted molecular dipole vectors from an E(3)-equivariant PaiNN model, on held-out molecules of the SQuIRL dataset (QM9 geometries). The accompanying study found no measurable benefit from persistent-homology conditioning.">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TopoResponse — Molecular Dipole Viewer</title>
+<meta name="description" content="Compare reference and PaiNN-predicted dipole vectors for held-out SQuIRL molecules. No persistent-homology advantage was detected in this configuration.">
 <link rel="canonical" href="https://mindvisio.github.io/topo-response/">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://mindvisio.github.io/topo-response/">
 <meta property="og:title" content="TopoResponse — dipole prediction viewer">
-<meta property="og:description" content="True vs predicted molecular dipole vectors from an E(3)-equivariant model, on held-out molecules.">
+<meta property="og:description" content="Compare reference and PaiNN-predicted dipole vectors for held-out SQuIRL molecules.">
 <meta property="og:image" content="https://mindvisio.github.io/topo-response/assets/hero_90694.png">
+<meta property="og:image:alt" content="A zwitterion in ball-and-stick form with its reference and predicted dipole vectors, beside its electron density colored by electrostatic potential">
+<meta property="og:image:width" content="1680">
+<meta property="og:image:height" content="780">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,7 +22,7 @@
 <style>
   :root{
     --bg:#080b11; --bg2:#0c1119; --panel:rgba(16,22,32,.72); --stroke:rgba(122,148,184,.16);
-    --ink:#e8eef6; --dim:#8394a8; --faint:#5b6b80;
+    --ink:#e8eef6; --dim:#8394a8; --faint:#75879e;
     --true:#2dd4bf; --pred:#f5a524; --accent:#5b8cff;
   }
   *{box-sizing:border-box}
@@ -60,7 +63,7 @@
   .row{display:flex; align-items:center; justify-content:space-between; gap:10px}
   .row .k{display:flex; align-items:center; gap:9px; font-size:12.5px; color:var(--dim)}
   .swatch{width:22px; height:3px; border-radius:2px; flex:none}
-  .swatch.dash{background:linear-gradient(90deg,var(--pred) 0 55%, transparent 55%); background-size:8px 3px}
+  .swatch.dash{background:var(--pred)}
   .val{font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:500; letter-spacing:-.01em}
   .val small{color:var(--faint); font-weight:400; font-size:.8em; margin-left:3px}
   .err{margin-top:14px; padding-top:14px; border-top:1px solid var(--stroke); display:grid; grid-template-columns:64px 1fr; gap:14px; align-items:center}
@@ -85,6 +88,10 @@
   .joylab{position:absolute; bottom:-17px; left:50%; transform:translateX(-50%); font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:.2em; text-transform:uppercase; color:var(--faint)}
   .hint{position:fixed; z-index:3; bottom:9px; left:50%; transform:translateX(-50%); font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--faint); letter-spacing:.06em; text-align:center; pointer-events:none}
   a{color:var(--accent)}
+  .about{margin-top:9px; border-top:1px solid var(--stroke); padding-top:8px}
+  .about summary{font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--dim); cursor:pointer; outline-offset:3px}
+  .about p{font-size:11.5px; line-height:1.5; color:var(--dim); margin:8px 0 0}
   @media (max-width:820px){
     .subtitle{display:none} .status{display:none}
     .topbar{left:16px; right:16px; top:14px}
@@ -104,17 +111,17 @@
 <div id="viewer"></div>
 <div class="atmo"></div>
 <div class="ctrls" id="ctrls">
-  <button id="spinBtn" class="on">◉ spin</button>
+  <button id="spinBtn" class="on" aria-pressed="true">◉ spin</button>
   <button id="resetBtn">⟲ reset</button>
   <button id="scaleBtn">↔ vectors ×1.0</button>
 </div>
 <div class="topbar">
   <div class="brand">
     <p class="eyebrow" title="Equivariant under rotation, reflection and translation">TopoResponse · E(3)-equivariant</p>
-    <h1 class="title">Dipole prediction <b>μ</b></h1>
-    <p class="subtitle">True vs predicted molecular dipole on <span title="Dataset of 133,883 QM9 molecules with precomputed dipole vectors and polarizability tensors">SQuIRL</span> geometries.</p>
+    <h1 class="title">Molecular dipole moment, <b>μ</b></h1>
+    <p class="subtitle">Reference vs predicted molecular dipole on <span title="Spectral Quantum Chemistry and Infrared Resonance Library, a QM9-derived dataset with precomputed dipole vectors and polarizability tensors">SQuIRL</span> geometries.</p>
   </div>
-  <div class="status"><span class="dot"></span>predicted = trained <span title="Polarizable Atom Interaction Neural Network, an equivariant message-passing architecture">PaiNN</span> baseline · held-out test molecules</div>
+  <div class="status"><span class="dot"></span>Model: <span title="Polarizable Atom Interaction Neural Network, an equivariant message-passing architecture">PaiNN</span> baseline (seed 0) · topology-OOD test examples</div>
 </div>
 <div class="panel" id="panel">
   <div class="selwrap">
@@ -127,11 +134,11 @@
   </div>
   <div class="smiles" id="smiles">—</div>
   <div class="rows">
-    <div class="row"><div class="k"><span class="swatch" style="background:var(--true)"></span>|μ| true</div>
+    <div class="row"><div class="k"><span class="swatch" style="background:var(--true)"></span>|μ| reference</div>
       <div class="val" id="vtrue">—<small>D</small></div></div>
     <div class="row"><div class="k"><span class="swatch dash"></span>|μ| predicted</div>
       <div class="val" id="vpred">—<small>D</small></div></div>
-    <div class="row"><div class="k"><span class="swatch" style="background:var(--faint)"></span>magnitude error</div>
+    <div class="row"><div class="k"><span class="swatch" style="background:var(--faint)"></span>magnitude difference (predicted − reference)</div>
       <div class="val" id="vmagerr">—<small>D</small></div></div>
   </div>
   <div class="err">
@@ -143,11 +150,17 @@
     </div>
   </div>
   <div class="rep" id="rep">
-    <button data-rep="0" class="on">ball-and-stick</button>
-    <button data-rep="1">surface</button>
-    <button data-rep="2">density</button>
+    <button data-rep="0" class="on" aria-pressed="true">ball-and-stick</button>
+    <button data-rep="1" aria-pressed="false">van der Waals surface</button>
+    <button data-rep="2" aria-pressed="false">electron density</button>
   </div>
   <div class="densnote" id="densnote"></div>
+  <details class="about">
+    <summary>about this study</summary>
+    <p>TopoResponse tests whether persistent-homology features add predictive value to an E(3)-equivariant PaiNN model for molecular dipole moments and polarizability tensors. Across five topology-OOD seeds, no improvement from FiLM conditioning was detected over the baseline or matched controls; Ridge and small-MLP residual probes likewise found no beneficial correction. This result is specific to the configuration studied, not a general verdict on topological data analysis.</p>
+    <p>Arrow lengths are nonlinearly scaled for visibility; the numeric magnitudes above are exact.</p>
+    <p><a href="https://github.com/Mindvisio/topo-response" target="_blank" rel="noopener">Code, data and full results on GitHub</a></p>
+  </details>
 </div>
 <div class="joy" id="joy">
   <div class="joyknob" id="joyknob"></div>
@@ -172,7 +185,10 @@ function formulaHTML(atoms){const c={};atoms.forEach(a=>c[a[0]]=(c[a[0]]||0)+1);
 function formulaText(atoms){const c={};atoms.forEach(a=>c[a[0]]=(c[a[0]]||0)+1);const order=Object.keys(c).sort((a,b)=>(a==='C'?-2:a==='H'?-1:0)-(b==='C'?-2:b==='H'?-1:0)||(a<b?-1:1));return order.map(e=>e+(c[e]>1?c[e]:'')).join('');}
 function centroid(atoms){let s=[0,0,0];atoms.forEach(a=>{s[0]+=a[1];s[1]+=a[2];s[2]+=a[3];});return V.scal(s,1/atoms.length);}
 const viewer=$3Dmol.createViewer(document.getElementById('viewer'),{backgroundColor:'#080b11',antialias:true});
-const DVEC_SCALE_BASE=0.46; let vecScale=1.0, spinning=true, cur=0, repMode=0; const SCALES=[1.0,1.6,0.6]; const AU2D=2.541746;
+const DVEC_SCALE_BASE=0.46;
+// honour the OS-level reduced-motion preference: no auto-rotation at all
+const REDUCED = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+let vecScale=1.0, spinning=!REDUCED, cur=0, repMode=0; const SCALES=[1.0,1.6,0.6]; const AU2D=2.541746;
 function drawArrow(from,to,color,radius){
   var L=Math.hypot(to[0]-from[0],to[1]-from[1],to[2]-from[2]);
   var head=Math.min(0.62,L*0.42);
@@ -319,8 +335,9 @@ function drawGauge(ang){
 const sel=document.getElementById('molsel');
 MOLS.forEach((m,i)=>{const o=document.createElement('option'); o.value=i; o.textContent=formulaText(m.atoms)+'  ·  #'+m.id+'  ('+(m.mag*AU2D).toFixed(2)+' D)'; sel.appendChild(o);});
 sel.addEventListener('change',()=>render(parseInt(sel.value,10)));
-document.querySelectorAll('#rep button').forEach(b=>{b.addEventListener('click',()=>{repMode=parseInt(b.getAttribute('data-rep'),10); document.querySelectorAll('#rep button').forEach(x=>x.classList.toggle('on',x===b)); render(cur,true);});});
-document.getElementById('spinBtn').onclick=function(){spinning=!spinning; this.classList.toggle('on',spinning); viewer.spin(spinning?'y':false, spinning?0.6:0);};
+document.querySelectorAll('#rep button').forEach(b=>{b.addEventListener('click',()=>{repMode=parseInt(b.getAttribute('data-rep'),10); document.querySelectorAll('#rep button').forEach(x=>{x.classList.toggle('on',x===b); x.setAttribute('aria-pressed', String(x===b));}); render(cur,true);});});
+if(REDUCED){var _sb=document.getElementById('spinBtn'); _sb.classList.remove('on'); _sb.setAttribute('aria-pressed','false');}
+document.getElementById('spinBtn').onclick=function(){spinning=!spinning; this.classList.toggle('on',spinning); this.setAttribute('aria-pressed', String(spinning)); viewer.spin(spinning?'y':false, spinning?0.6:0);};
 document.getElementById('resetBtn').onclick=()=>{viewer.zoomTo();viewer.zoom(MOLS[cur].mag>1e-3?0.85:1.15);viewer.render();};
 let si=0; document.getElementById('scaleBtn').onclick=function(){si=(si+1)%SCALES.length; vecScale=SCALES[si]; this.textContent='↔ vectors ×'+vecScale.toFixed(1); render(cur,true);};
 window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'){render((cur+1)%MOLS.length);} if(e.key==='ArrowLeft'){render((cur-1+MOLS.length)%MOLS.length);}});
