@@ -19,6 +19,7 @@ from scipy.spatial.transform import Rotation
 
 NBASIS = 128
 CUTOFF = 5.0
+TOL = 1e-4          # float32 forward passes land ~1e-6; 1e-4 catches real breakage
 SPLIT = 'cache/split_topology_ood.npz'
 KEY = {'dipole': 'dipole_moment', 'polar': 'polarizability'}
 
@@ -110,8 +111,13 @@ def check(head, cond, ckpt=None):
         eT = o0.reshape(-1, 9)
         oR, oF, oT = oR.reshape(-1, 9), oF.reshape(-1, 9), oT.reshape(-1, 9)
     rel = lambda a, e: float((a - e).norm() / (e.norm() + 1e-8))
+    errs = (rel(oR, eR), rel(oF, eF), rel(oT, eT))
     print('    %-6s  rotation %.2e | reflection %.2e | translation %.2e'
-          % (head, rel(oR, eR), rel(oF, eF), rel(oT, eT)))
+          % (head, errs[0], errs[1], errs[2]))
+    # a real gate, not a printout: float32 round-off is ~1e-6, so anything above
+    # TOL means the symmetry is genuinely broken
+    assert max(errs) < TOL, ('E(3) equivariance violated for %s: rotation/reflection/translation '
+                             '= %.2e/%.2e/%.2e (tolerance %.0e)' % ((head,) + errs + (TOL,)))
 
 
 CASES = [
@@ -128,4 +134,4 @@ if __name__ == '__main__':
         ck = sorted(glob.glob(d + '/best-*.ckpt'))[0] if d else None
         print('%s [%s]%s' % (label, head, '' if ck is None else '  ' + ck), flush=True)
         check(head, cond, ck)
-    print('E3_TEST DONE', flush=True)
+    print('E3_TEST PASS (all cases within %.0e)' % TOL, flush=True)

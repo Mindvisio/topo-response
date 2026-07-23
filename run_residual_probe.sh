@@ -28,22 +28,54 @@ if [ "${SKIP_EXPORT:-0}" != "1" ]; then
   done
 fi
 
-# 0b. refuse to continue on an incomplete input set
-missing=0
-for prop in $PROPS; do
-  for s in $SEEDS; do
-    f="$CACHE/${prop}_topology_ood_s${s}.npz"
-    [ -s "$f" ] || { echo "MISSING $f"; missing=1; }
-  done
-done
-[ "$missing" -eq 0 ] || { echo 'incomplete probe_cache: rerun without SKIP_EXPORT=1'; exit 1; }
-echo "inputs complete: $(ls "$CACHE"/*.npz | wc -l) export files"
+# 0b. refuse to continue on an incomplete or inconsistent input set: every export
+#     needs BOTH its .npz and its .json sidecar, and the checkpoint each sidecar
+#     names must still hash to the value recorded when it was exported.
+CACHE="$CACHE" SEEDS="$SEEDS" PROPS="$PROPS" $PY - <<'PYCHECK'
+import hashlib, json, os, sys
+cache = os.environ['CACHE']
+seeds = os.environ['SEEDS'].split()
+props = os.environ['PROPS'].split()
+
+
+def sha256(p):
+    h = hashlib.sha256()
+    with open(p, 'rb') as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b''):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+bad = []
+for prop in props:
+    for s in seeds:
+        stem = '%s/%s_topology_ood_s%s' % (cache, prop, s)
+        npz, js = stem + '.npz', stem + '.json'
+        for p in (npz, js):
+            if not (os.path.exists(p) and os.path.getsize(p) > 0):
+                bad.append('missing or empty: ' + p)
+        if not os.path.exists(js):
+            continue
+        m = json.load(open(js))
+        ck = m.get('checkpoint')
+        if not ck or not os.path.exists(ck):
+            bad.append('checkpoint not found for %s: %s' % (js, ck))
+        elif sha256(ck) != m.get('checkpoint_sha256'):
+            bad.append('checkpoint hash changed since export: ' + ck)
+if bad:
+    print('INPUT CHECK FAILED')
+    for b in bad:
+        print('  ' + b)
+    sys.exit(1)
+print('inputs complete and consistent: %d exports, checkpoint hashes match'
+      % (len(props) * len(seeds)))
+PYCHECK
 
 # 1. equivariance of every correction basis, BEFORE any fitting
 $PY test_probe_equivariance.py
 
 # 2. fit the probes + score corrected predictions (per seed, both bases, all controls)
-$PY residual_probe.py
+$PY residual_probe.py --cache "$CACHE" --props $PROPS --seeds $SEEDS
 
 # 3. paired n=5 statistics with a Holm correction over the declared family
 $PY analyze_residual_probe.py

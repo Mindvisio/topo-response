@@ -52,8 +52,8 @@ realizations), `shuffled` (`z_PH` permuted across molecules, 5 realizations).
 Descriptors and coefficient targets are standardised on train only; the Ridge
 `alpha` is chosen on validation from a `1e-6 .. 1e6` grid and refit on train+val;
 the test set is scored once. The intercept is left **unpenalised**, so a large
-`alpha` reduces the probe to predicting the training mean and a negative `R^2` can
-be read as "no better than the mean". Molecules with `|mu_base| < 0.1 D` (dipole,
+`alpha` reduces the probe to an intercept-only fit rather than shrinking the fitted
+mean toward zero. Molecules with `|mu_base| < 0.1 D` (dipole,
 0.70% of test) or a near-isotropic `A_base` (polar, 4.3%) have the correction
 defined to zero and are reported rather than silently mixed in.
 
@@ -84,9 +84,12 @@ Probe R^2 on held-out coefficients (mean over seeds):
 | secondary (exploratory) | dipole | -0.0001 | -0.0000 | -0.0000 |
 | secondary (exploratory) | polar | -0.0002 | -0.0002 | -0.0002 |
 
-Every R^2 is at or below zero — the probe predicts the coefficients no better than
-their training mean — and TDA never separates from the matched random control. In
-the secondary bases the selected `alpha` drives the fitted slope to zero, so R^2
+R^2 here is measured against a **test-mean reference** (`ss_tot` uses the mean of
+the test coefficients themselves), so `R^2 <= 0` states that the probe has no
+positive out-of-sample explanatory power relative to that reference — a stronger
+and more precise statement than any claim about a training mean. Every value is at
+or below zero, and TDA never separates from the matched random control. In the
+secondary bases the selected `alpha` drives the fitted slope to zero, so R^2
 collapses to the intercept-only value.
 
 Physical-metric paired differences (n=5, topology-OOD; positive = correction made
@@ -114,8 +117,10 @@ Holm-adjusted p-values over the declared family of six primary-basis tests
 No test is significant. The two smallest raw p-values are `tda`-vs-`null`, and
 their sign is **positive**: the fitted correction slightly *worsens* the baseline
 rather than helping it. A sensitivity refit that uses only validation residuals (no
-in-sample train residuals) gives the same sign, so the direction is not an artefact
-of optimistic training residuals.
+in-sample train residuals, same estimator) gives the same sign and a comparable size
+-- +0.000141 D for the dipole and +0.0281 a.u. for the polarizability against the
+main-path +0.000169 and +0.0327 -- so the direction is not an artefact of optimistic
+training residuals.
 
 ## Conclusion
 

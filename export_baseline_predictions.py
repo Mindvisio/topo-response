@@ -52,7 +52,7 @@ def main():
     ckpt = ckpts[0]
 
     tfs = [trn.SubtractCenterOfGeometry(),
-           trn.CachedNeighborList(cache_path=a.cache,
+           trn.CachedNeighborList(cache_path='%s_cut%g' % (a.cache, a.cutoff),
                                   neighbor_list=trn.ASENeighborList(cutoff=a.cutoff),
                                   keep_cache=True),
            trn.CastTo32()]

@@ -52,7 +52,7 @@
     ],
     "p": 0.5113401003350225
    },
-   "sensitivity_delta_mean": 9.28683789044038e-06,
+   "sensitivity_delta_mean": 0.00014051606703952279,
    "frac_small": 0.007024140783635407
   },
   "secondary": {
@@ -162,7 +162,7 @@
     ],
     "p": 0.8289634592002644
    },
-   "sensitivity_delta_mean": 0.007747404355237464,
+   "sensitivity_delta_mean": 0.02811713546817054,
    "frac_small": 0.04278258253741445
   },
   "secondary": {

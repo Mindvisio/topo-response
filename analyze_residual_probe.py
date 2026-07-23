@@ -12,6 +12,13 @@ import numpy as np
 PRIMARY_METRIC = {'dipole': 'compMAE', 'polar': 'Frob'}
 
 
+def _safe_mean(vals):
+    """Mean over the non-NaN entries; NaN if there are none (the null arm fits
+    no probe, so it has no R^2 -- nanmean would warn on an empty slice)."""
+    v = [x for x in vals if x == x]
+    return float(np.mean(v)) if v else float('nan')
+
+
 def load(path):
     rows = list(csv.DictReader(open(path)))
     for r in rows:
@@ -24,15 +31,34 @@ def load(path):
     return rows
 
 
+EXPECTED_SEEDS = 5
+EXPECTED_REALIZATIONS = {'null': 1, 'tda': 1, 'random': 5, 'shuffled': 5}
+
+
 def seed_means(rows, prop, basis, arm):
-    """Delta and probe-R2 per seed, averaging realizations within each seed."""
+    """Delta and probe-R2 per seed, averaging realizations WITHIN each seed.
+
+    Averaging first is what keeps the 5 random/shuffled realizations from being
+    passed off as extra training seeds.  The design is checked rather than
+    assumed: a missing seed or realization is a silent power inflation.
+    """
     out = {}
     for r in rows:
         if r['property'] == prop and r['basis'] == basis and r['arm'] == arm:
             out.setdefault(r['seed'], []).append(r)
     seeds = sorted(out)
+    if not seeds:
+        return [], np.array([]), np.array([])
+    if len(seeds) != EXPECTED_SEEDS:
+        raise SystemExit('incomplete design: %s/%s/%s has %d seeds, expected %d'
+                         % (prop, basis, arm, len(seeds), EXPECTED_SEEDS))
+    want = EXPECTED_REALIZATIONS.get(arm, 1)
+    for s in seeds:
+        if len(out[s]) != want:
+            raise SystemExit('incomplete design: %s/%s/%s seed %d has %d realizations, expected %d'
+                             % (prop, basis, arm, s, len(out[s]), want))
     delta = np.array([np.mean([x['delta'] for x in out[s]]) for s in seeds])
-    r2 = np.array([np.nanmean([x['probe_r2_mean'] for x in out[s]]) for s in seeds])
+    r2 = np.array([_safe_mean([x['probe_r2_mean'] for x in out[s]]) for s in seeds])
     return seeds, delta, r2
 
 

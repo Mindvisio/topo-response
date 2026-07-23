@@ -200,7 +200,12 @@ def fit_predict(Z, coef_tr, coef_va, alphas):
 
 
 def probe_r2(coef_true_te, coef_pred_te):
-    """Coefficient-of-determination of the probe on the held-out coefficients."""
+    """R^2 of the probe on the held-out coefficients, against a TEST-MEAN reference.
+
+    ss_tot uses the mean of the test coefficients themselves, so R^2 <= 0 means
+    'no positive out-of-sample explanatory power relative to a test-mean
+    reference' -- not the weaker statement about a training mean.
+    """
     ss_res = ((coef_true_te - coef_pred_te) ** 2).sum(0)
     ss_tot = ((coef_true_te - coef_true_te.mean(0)) ** 2).sum(0) + 1e-12
     return 1.0 - ss_res / ss_tot
@@ -297,7 +302,7 @@ def arm_realizations(kind, seed):
     return [0]
 
 
-def sensitivity_direction(prop, ex, S_by_split, coef_full, masks, basis, alphas):
+def sensitivity_direction(prop, ex, S_by_split, coef_full, masks, basis, alphas, zph_all):
     """Refit using ONLY a val-derived split (no in-sample train residuals) and
     report the sign of Delta on test, to check the direction is not an artefact
     of the baseline's optimistic train residuals."""
@@ -306,22 +311,9 @@ def sensitivity_direction(prop, ex, S_by_split, coef_full, masks, basis, alphas)
     perm = rng.permutation(nva)
     half = nva // 2
     pt, pv = perm[:half], perm[half:]
-    Zva = load_zph()[ex['val']['idx']]
-    Ztr_s, Zva_s, Zte_s = standardize(Zva[pt], Zva[pv], load_zph()[ex['test']['idx']])
-    add1 = lambda A: np.hstack([A, np.ones((len(A), 1))])
-    Ztr_s, Zva_s, Zte_s = add1(Ztr_s), add1(Zva_s), add1(Zte_s)
-    from numpy.linalg import solve
-    ytr, yv = coef_full['val'][pt], coef_full['val'][pv]
-    d = Ztr_s.shape[1]
-    best, bmse = alphas[0], np.inf
-    for al in alphas:
-        W = solve(Ztr_s.T @ Ztr_s + al * np.eye(d), Ztr_s.T @ ytr)
-        mse = ((Zva_s @ W - yv) ** 2).mean()
-        if mse < bmse:
-            bmse, best = mse, al
-    Xtv = np.vstack([Ztr_s, Zva_s]); Ytv = np.vstack([ytr, yv])
-    W = solve(Xtv.T @ Xtv + best * np.eye(d), Xtv.T @ Ytv)
-    coef_te = Zte_s @ W
+    Zva = zph_all[ex['val']['idx']]
+    Z = {'train': Zva[pt], 'val': Zva[pv], 'test': zph_all[ex['test']['idx']]}
+    coef_te, _ = fit_predict(Z, coef_full['val'][pt], coef_full['val'][pv], alphas)
     base = (dipole_metrics if prop == 'dipole' else polar_metrics)(ex['test']['pred'], ex['test']['target'])
     corr = corrected_metric(prop, ex['test']['pred'], S_by_split['test'], coef_te, basis,
                             masks['test'], ex['test']['target'])
@@ -336,6 +328,7 @@ def main():
     ap.add_argument('--seeds', nargs='+', type=int, default=[0, 1, 2, 3, 4])
     ap.add_argument('--bases', nargs='+', default=['primary', 'secondary'])
     ap.add_argument('--arms', nargs='+', default=['null', 'tda', 'random', 'shuffled'])
+    ap.add_argument('--cache', default='probe_cache')
     ap.add_argument('--out', default='results/residual_probe_per_seed.csv')
     a = ap.parse_args()
     os.makedirs('results', exist_ok=True)
@@ -344,7 +337,7 @@ def main():
     for prop in a.props:
         pm = PRIMARY_METRIC[prop]
         for seed in a.seeds:
-            ex = load_export(prop, seed)
+            ex = load_export(prop, seed, cache=a.cache)
             S_by = {s: gyration_lookup(ex[s]['idx']) for s in ('train', 'val', 'test')}
             ids = {s: ex[s]['idx'] for s in ('train', 'val', 'test')}
             base = (dipole_metrics if prop == 'dipole' else polar_metrics)(ex['test']['pred'], ex['test']['target'])
@@ -371,7 +364,8 @@ def main():
                                              res['coef_pred'], basis, masks['test'], ex['test']['target'])
                         sens = ''
                         if arm == 'tda' and basis == 'primary':
-                            sens = sensitivity_direction(prop, ex, S_by, tgt, masks, basis, ALPHAS)
+                            sens = sensitivity_direction(prop, ex, S_by, tgt, masks, basis,
+                                                         ALPHAS, zph_all)
                         row = dict(property=prop, seed=seed, basis=basis, arm=arm, realization=real,
                                    alpha=res['alpha'], baseline=base[pm], corrected=m[pm],
                                    delta=m[pm] - base[pm],
