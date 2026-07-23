@@ -8,7 +8,7 @@ assembles the correction from equivariant tensors built out of the geometry:
   polar   primary   : A_corr  = A_base + a I + b Q          (Q = deviatoric A_base)
           secondary : A_corr  = A_base + a I + b Q + c S + d (S Q + Q S)/2
 
-where S is the gyration tensor of the centred coordinates. Under an orthogonal R
+where S is the gyration tensor of the centered coordinates. Under an orthogonal R
 the coefficients are unchanged (they are functions of invariants) while every
 tensor carries its own indices, so mu_corr -> R mu_corr and A_corr -> R A_corr R^T.
 This file checks exactly that, with the coefficients held fixed across the transform.

@@ -82,7 +82,7 @@ $PY analyze_residual_probe.py --label 'Ridge probe'
 
 # 4. optional nonlinear probe: same question, MLP instead of Ridge, primary basis
 #    only.  Its six tests are a SEPARATE pre-declared family, not an extension of
-#    the Ridge family, so it is analysed and reported separately.
+#    the Ridge family, so it is analyzed and reported separately.
 if [ "${RUN_MLP:-0}" = "1" ]; then
   $PY residual_probe_mlp.py --cache "$CACHE" --props $PROPS --seeds $SEEDS
   $PY analyze_residual_probe.py \

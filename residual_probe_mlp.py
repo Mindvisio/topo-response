@@ -10,7 +10,7 @@ independent confirmatory experiment):
   * the well-conditioned PRIMARY basis only (the gyration-augmented bases are
     exploratory and ill-conditioned, so they are not used here);
   * MLP 130 -> 64 -> 32 -> k with ReLU, fitted on train, early-stopped on val;
-  * identical architecture, optimiser, schedule and stopping rule for tda,
+  * identical architecture, optimizer, schedule and stopping rule for tda,
     random and shuffled -- the arms differ only in which descriptor they see;
   * 5 baseline seeds x 3 weight initialisations, and for the random/shuffled
     controls x5 descriptor realizations, all averaged WITHIN a baseline seed so
@@ -19,7 +19,7 @@ independent confirmatory experiment):
     training, early stopping nor model selection; both readouts reported (probe
     R^2 against a test-mean reference, and the physical metric delta).
 
-Analysed as its own family of six tests rather than as an extension of the Ridge
+Analyzed as its own family of six tests rather than as an extension of the Ridge
 family, so it does not retroactively change that family's multiplicity or revise
 its conclusions.
 """
@@ -92,7 +92,7 @@ def fit_mlp(Ztr, Ytr, Zva, Yva, Zte, init_seed):
 def run_arm(Z, coef_tr, coef_va, coef_te, n_inits):
     """Fit n_inits networks on one descriptor and return their test predictions.
 
-    Descriptors and coefficient targets are standardised on TRAIN only, exactly
+    Descriptors and coefficient targets are standardized on TRAIN only, exactly
     as in the Ridge probe, so the two probes differ in the estimator and nothing
     else.
     """

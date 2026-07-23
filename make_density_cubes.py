@@ -4,7 +4,7 @@ RHF/6-31G* at the SQuIRL geometry. The cube box is padded generously so the
 0.002 e/a0^3 isosurface closes instead of being clipped by the grid boundary.
 Charges are fitted to reproduce the exact QM electrostatic potential on a
 Merz-Kollman style shell outside the van der Waals surface, so the viewer can
-rebuild the potential (for surface colouring) from a handful of numbers.
+rebuild the potential (for surface coloring) from a handful of numbers.
 """
 import json, os, re, time
 import numpy as np

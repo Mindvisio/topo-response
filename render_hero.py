@@ -1,7 +1,7 @@
 """Offscreen render of one molecule for the README header.
 
 Left panel  : ball-and-stick geometry with the true and predicted dipole vectors.
-Right panel : the RHF/6-31G* electron density isosurface, coloured by the
+Right panel : the RHF/6-31G* electron density isosurface, colored by the
               electrostatic potential rebuilt from the fitted charges.
 Run under a virtual display:  xvfb-run -a python3 render_hero.py 90694
 """
@@ -142,7 +142,7 @@ def bond_offset_dir(i, j, pos, B):
 
 
 def ball_stick(Z, pos):
-    """Atom spheres plus half-coloured bonds, drawn with their bond order."""
+    """Atom spheres plus half-colored bonds, drawn with their bond order."""
     acts = [sphere(pos[i], RBALL.get(Z[i], 0.33), JMOL.get(Z[i], (0.8, 0.8, 0.8)))
             for i in range(len(Z))]
     B = perceive_bonds(Z, pos)
@@ -232,7 +232,7 @@ def main():
     lo, hi = np.percentile(v, [4, 96]); R = float(max(abs(lo), abs(hi), 0.012))
     sc = numpy_support.numpy_to_vtk(v, deep=True); sc.SetName('esp')
     surf.GetPointData().SetScalars(sc)
-    print('isosurface: %d triangles, ESP on surface %.4f..%.4f a.u., colour range +-%.4f'
+    print('isosurface: %d triangles, ESP on surface %.4f..%.4f a.u., color range +-%.4f'
           % (surf.GetNumberOfPolys(), v.min(), v.max(), R))
 
     ctf = vtk.vtkColorTransferFunction()

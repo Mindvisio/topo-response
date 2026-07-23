@@ -12,7 +12,7 @@ Coefficients are invariant (regressed from invariant z_PH); the correction is bu
 from equivariant tensors (see test_probe_equivariance.py). Two bases per property:
   primary   -- the minimal spec form
   secondary -- augmented with the gyration tensor S, declared in advance
-Standardisation is fit on train only. All fits are Ridge; alpha is chosen on val.
+Standardization is fit on train only. All fits are Ridge; alpha is chosen on val.
 """
 import argparse, json, os
 import numpy as np
@@ -38,7 +38,7 @@ def load_zph(split='topology_ood'):
 
 
 def gyration_tensors(ids):
-    """S = centred-coordinate second moment, one 3x3 per molecule id."""
+    """S = centered-coordinate second moment, one 3x3 per molecule id."""
     db = ASEAtomsData(DB)
     out = np.zeros((len(ids), 3, 3))
     for k, i in enumerate(ids):
@@ -71,7 +71,7 @@ def dipole_targets(pred, target, S, basis):
     Smu = np.einsum('nij,nj->ni', S, pred)
     S2mu = np.einsum('nij,nj->ni', S, Smu)
     B = np.stack([pred, Smu, S2mu], axis=2)              # (N,3,3): columns are the basis vectors
-    # per-molecule least squares of r onto the 3 basis vectors, ridge-stabilised
+    # per-molecule least squares of r onto the 3 basis vectors, ridge-stabilized
     G_raw = np.einsum('nik,nil->nkl', B, B)
     cond = np.linalg.cond(G_raw)
     G = G_raw + 1e-6 * np.eye(3)
@@ -163,7 +163,7 @@ def polar_metrics(pred, target):
 def _ridge_solve(X, Y, alpha):
     """Closed-form ridge with the intercept column left UNPENALISED.
 
-    The last design column is the constant 1.  Penalising it would shrink the
+    The last design column is the constant 1.  Penalizing it would shrink the
     fitted mean toward zero, so a large alpha would not reduce the probe to
     'predict the training mean' and a negative R^2 could no longer be read as
     'no better than predicting the mean'.
@@ -176,9 +176,9 @@ def _ridge_solve(X, Y, alpha):
 
 
 def fit_predict(Z, coef_tr, coef_va, alphas):
-    """Standardise on train, choose alpha on val, refit on train+val, predict test.
+    """Standardize on train, choose alpha on val, refit on train+val, predict test.
 
-    Coefficient targets are standardised per column on train as well: the
+    Coefficient targets are standardized per column on train as well: the
     secondary bases mix tensors of different physical scale, so an unscaled
     multi-output MSE would let one coordinate dominate the alpha choice.
     """
@@ -309,8 +309,8 @@ def arm_realizations(kind, seed):
 
 def sensitivity_direction(prop, ex, S_by_split, coef_full, masks, basis, alphas, zph_all):
     """Refit using ONLY a val-derived split (no in-sample train residuals) and
-    report the sign of Delta on test, to check the direction is not an artefact
-    of the baseline's optimistic train residuals."""
+    report the sign of Delta on test, to check the direction is not an artifact
+    of the baseline's optimiztic train residuals."""
     nva = len(ex['val']['pred'])
     rng = np.random.default_rng(12345)
     perm = rng.permutation(nva)

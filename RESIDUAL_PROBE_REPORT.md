@@ -15,9 +15,9 @@ Freeze each baseline (`cond=none`) checkpoint. On every molecule it makes an err
 whether that correction reduces the held-out error — and whether it does so any
 better than the same map fed a *random* descriptor of identical shape.
 
-If `z_PH` carried linearly usable residual structure, an oracle probe fitted on
-60k training molecules should expose it, even where a jointly-trained FiLM gate did
-not. A null result here does not prove the descriptor is uninformative; it narrows
+If `z_PH` carried linearly usable residual structure, a supervised residual probe
+fitted on 60k training molecules within the chosen correction basis should expose it,
+even where a jointly-trained FiLM gate did not. A null result here does not prove the descriptor is uninformative; it narrows
 where any remaining signal could hide.
 
 ## Design
@@ -29,13 +29,15 @@ transforms correctly by construction (verified numerically to float64 round-off 
 `test_probe_equivariance.py`, over 200 random rotations and reflections, before any
 fitting).
 
-Two bases per property, both declared before touching the test set:
+Two bases per property, both fixed before this probe was fitted. Note that the
+topology-OOD test split was **already used by the main study**, so no part of this
+experiment is an untouched-test analysis; it is a post-hoc diagnostic throughout:
 
 - **primary** — the minimal form, and the basis the conclusions rest on.
   Dipole: `mu_corr = mu_base + a*unit(mu_base)`.
   Polar: `A_corr = A_base + a*I + b*Q`, with `Q` the deviatoric part of `A_base`.
 - **secondary (exploratory)** — augmented with the gyration tensor `S` of the
-  centred coordinates. Dipole: `mu_corr = (1+a)*mu_base + b*(S mu_base) +
+  centered coordinates. Dipole: `mu_corr = (1+a)*mu_base + b*(S mu_base) +
   c*(S^2 mu_base)`. Polar: adds `c*S + d*(S Q + Q S)/2`.
 
 The primary dipole correction is collinear with `mu_base`, so it can only rescale
@@ -49,10 +51,10 @@ bases are well conditioned (1 and 94 respectively).
 Controls, all with identical preprocessing and dimensionality: `null` (no
 correction), `random` (Gaussian matched to the train mean/std of `z_PH`, 5
 realizations), `shuffled` (`z_PH` permuted across molecules, 5 realizations).
-Descriptors and coefficient targets are standardised on train only; the Ridge
+Descriptors and coefficient targets are standardized on train only; the Ridge
 `alpha` is chosen on validation from a `1e-6 .. 1e6` grid and refit on train+val;
 each fitted model is evaluated once on test, and test results are not used for
-fitting, alpha selection or model selection. The intercept is left **unpenalised**, so a large
+fitting, alpha selection or model selection. The intercept is left **unpenalized**, so a large
 `alpha` reduces the probe to an intercept-only fit rather than shrinking the fitted
 mean toward zero. Molecules with `|mu_base| < 0.1 D` (dipole,
 0.70% of test) or a near-isotropic `A_base` (polar, 4.3%) have the correction
@@ -62,8 +64,9 @@ defined to zero and are reported rather than silently mixed in.
 
 Two independent readouts, not to be blurred:
 
-1. **Probe R^2** on the 66,485-molecule test set — decisive at a single seed. Does
-   `z_PH` predict the correction coefficients better than the random control?
+1. **Probe R^2** on the 66,485-molecule test set — estimated on many molecules, so
+   it is far less seed-limited than the physical metric. Does `z_PH` predict the
+   correction coefficients better than the random control?
 2. **Physical-metric delta** (compMAE for dipole, Frobenius for polar), paired
    across the n=5 baseline seeds — the same n as the main study, and it inherits the
    same width. Does the correction actually lower the error, and by more than the
@@ -115,12 +118,12 @@ Holm-adjusted p-values over the declared family of six primary-basis tests
 | polar tda vs random | 0.836 | 1.000 |
 | polar tda vs shuffled | 0.829 | 1.000 |
 
-No test is significant. The two smallest raw p-values are `tda`-vs-`null`, and
-their sign is **positive**: the fitted correction slightly *worsens* the baseline
+No test is significant. The two smallest raw p-values belong to the `tda`-vs-`null` comparisons, whose mean
+differences are **positive**: the fitted correction slightly *worsens* the baseline
 rather than helping it. A sensitivity refit that uses only validation residuals (no
 in-sample train residuals, same estimator) gives the same sign and a comparable size
 -- +0.000141 D for the dipole and +0.0281 a.u. for the polarizability against the
-main-path +0.000169 and +0.0327 -- so the direction is not an artefact of optimistic
+main-path +0.000169 and +0.0327 -- so the direction is not an artifact of optimiztic
 training residuals.
 
 ## Nonlinear probe (MLP)
@@ -129,8 +132,8 @@ A linear probe finding nothing leaves one reading open: that the relation exists
 but is nonlinear and Ridge could not see it. To close that reading as far as a
 small network can, the same experiment was repeated with an MLP
 (130 -> 64 -> 32 -> k, ReLU) in place of Ridge, on the well-conditioned **primary
-basis only**. Everything else is identical -- train-only standardisation of
-descriptors and coefficient targets, the same architecture, optimiser, schedule
+basis only**. Everything else is identical -- train-only standardization of
+descriptors and coefficient targets, the same architecture, optimizer, schedule
 and early-stopping rule for every arm. Each fitted model is evaluated once on
 test, and test results are used for neither training, early stopping nor model
 selection. Each of the
@@ -139,7 +142,7 @@ controls additionally get 5 descriptor realizations; initialisations and
 realizations are averaged **within** a baseline seed, so the unit of replication
 is still the seed (n=5). Early stopping uses the validation split only.
 
-This is a **pre-specified follow-up sensitivity analysis**, analysed as its own
+This is a **pre-specified follow-up sensitivity analysis**, analyzed as its own
 family of six tests rather than as an extension of the Ridge family above, so it
 does not retroactively change that family's multiplicity or revise its conclusions.
 Its specification was fixed before this probe was run, but after the Ridge results
@@ -176,19 +179,20 @@ ordered — for the polarizability `tda` sits numerically above its controls
 physical-metric advantage over the controls was detected for either property. One observation is worth recording without over-reading
 it: on the real descriptor the networks run markedly longer before early stopping
 -- median 50 epochs for the dipole against 16-19 on random and shuffled -- yet
-generalise no better, and for the dipole slightly worse. That is a difference in
-optimisation and early-stopping dynamics; it is not by itself evidence that the
+generalize no better, and for the dipole slightly worse. That is a difference in
+optimization and early-stopping dynamics; it is not by itself evidence that the
 network found transferable structure, and no such claim is made here.
 
 ## Conclusion
 
-Neither a linear nor a small nonlinear equivariant probe detected additional
-predictive signal from `z_PH` beyond matched random and shuffled controls: neither
-reduces the frozen baseline's held-out error, and neither predicts the correction
-coefficients better than a random descriptor of the same shape — for either
-property, on the topology-OOD split. This is consistent with the
-main 5-seed negative and narrows the space in which a usable residual signal could
-still be hiding.
+Neither probe achieved a positive out-of-sample R^2, and TDA showed no beneficial
+physical-metric advantage over the controls — for either property, on the
+topology-OOD split. Individual R^2 values are not uniformly ordered (for the
+polarizability the nonlinear `tda` mean sits slightly above its controls, for the
+dipole below), so the claim is about the absence of a usable advantage, not about
+`z_PH` being uniformly the worst input. This is consistent with the main 5-seed
+negative and narrows the space in which a usable residual signal could still be
+hiding.
 
 What this does **not** show. "No effect detected" is not proven equivalence. The
 coefficient targets are the projection of the residual onto a fixed

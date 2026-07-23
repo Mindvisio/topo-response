@@ -16,7 +16,7 @@ See requirements.txt for the direct pins (torch 2.4.1+cu121, schnetpack 2.1.1, e
 ## Audit fixes (all verified)
 1. Betti on fixed [0,1] grid (was per-molecule -> incomparable bins).
 2. SubtractCenterOfGeometry in all train/eval -> polarizability head translation-invariant; full E(3) of BOTH heads verified (rot/refl/trans ~1e-6).
-3. Identity-init FiLM (zero-init last layer -> TDA==baseline at init) + train-only standardisation + clip[-10,10].
+3. Identity-init FiLM (zero-init last layer -> TDA==baseline at init) + train-only standardization + clip[-10,10].
 4. Group split (0 leakage); shuffled control permuted WITHIN split; corrected metrics (true vector MAE; tensor Frobenius/anisotropy/eigenvalue/principal-axis; a.u.->Debye; dipole angle only for |mu|>0.1 D).
 
 ## Runs
@@ -48,7 +48,7 @@ TDACondition is identity-initialised, so a freshly built conditioned model emits
 | polar, trained baseline | n/a | 1.6e-07 | 1.8e-07 | 2.2e-07 |
 | polar, trained TDA | 0.2191 / 0.1345 / 0.2622 (active) | 1.3e-07 | 1.5e-07 | 1.3e-07 |
 
-Relative errors are at float32 round-off, so both heads remain E(3)-equivariant under rotation, reflection and translation with the learned conditioning switched on -- not merely at initialisation. Batch: 24 molecules from the topology-OOD split, geometries centred before each forward pass.
+Relative errors are at float32 round-off, so both heads remain E(3)-equivariant under rotation, reflection and translation with the learned conditioning switched on -- not merely at initialisation. Batch: 24 molecules from the topology-OOD split, geometries centered before each forward pass.
 
 ## Checkpoints
 44 configs x (best,last) on sci-node /root/topores/ckpt_*/ (zip-verified), naming ckpt[_polar]_<split>_<cond>_s<seed>. Git-excluded. The pipeline is rerunnable from this manifest + pinned env + seeds; the exact checkpoint files are archived on sci-node rather than regenerated bit-for-bit (cuDNN/GPU nondeterminism means a rerun reproduces the reported metrics, not identical weights).

@@ -6,29 +6,30 @@ Course project for the Deep Learning School (DLS). Given a molecule's 3D geometr
 
 ## Why
 
-Equivariant message passing (PaiNN, MACE, …) already predicts molecular response tensors well. Persistent homology contributes a **global, isometry-invariant, noise-robust** inductive bias that local message passing can miss. The question is whether that bias measurably helps, and where — the interesting regime is out-of-distribution (OOD) generalisation, not the saturated in-distribution benchmark. The prior expectation was a modest accuracy gain and better OOD robustness. It did not materialise (see [Status](#status)), which is exactly why the matched negative controls were built in from the start: they are what makes a null result informative rather than merely inconclusive.
+Equivariant message passing (PaiNN, MACE, …) already predicts molecular response tensors well. Persistent homology contributes a **global, isometry-invariant, noise-robust** inductive bias that local message passing can miss. The question is whether that bias measurably helps, and where — the interesting regime is out-of-distribution (OOD) generalization, not the saturated in-distribution benchmark. The prior expectation was a modest accuracy gain and better OOD robustness. It did not materialise (see [Status](#status)), which is exactly why the matched negative controls were built in from the start: they are what makes a null result informative rather than merely inconclusive.
 
 ## Data
 
-[SQuIRL](https://doi.org/10.6084/m9.figshare.30734843) — 133,883 QM9 molecules (ωB97X-D/aug-cc-pVTZ) with the **dipole moment vector** and full **3×3 polarizability tensor** already computed (no re-computation needed). Physical sanity checks pass: methane α isotropic; ammonia C₃ᵥ (two equal + one distinct eigenvalue); anisotropic tensors respect point-group symmetry.
+[SQuIRL](https://doi.org/10.6084/m9.figshare.30734843), the Spectral Quantum Chemistry and Infrared Resonance Library — 133,885 QM9 molecules (ωB97X-D/aug-cc-pVTZ) with the **dipole moment vector** and full **3×3 polarizability tensor** already computed (no re-computation needed). This study uses the **133,883 records present in the processed index**; two identifiers (1550 and 65111) are absent from it, hence the small gap against the 133,885 quoted by the dataset paper. Physical sanity checks pass: methane α isotropic; ammonia C₃ᵥ (two equal + one distinct eigenvalue); anisotropic tensors respect point-group symmetry.
 
 ## Method
 
 - **Backbone**: E(3)-equivariant network (SchNetPack PaiNN) with dipole (ℓ=1) and polarizability (ℓ=0⊕ℓ=2) heads.
-- **TDA conditioning**, preserving every irreducible representation (*irrep*): per-molecule H₀/H₁ persistence of the 3D point cloud → persistence features z_PH that gate channel mixing *within each irrep* (exact equivariance preserved), not appended to Cartesian components.
+- **z_PH descriptor (130-D)**: Vietoris–Rips persistence of the 3D point cloud, over *all* atoms and using *no* element information. Coordinates are centered and divided by the molecular diameter, so every filtration value falls in [0,1] and one fixed 64-point grid is shared by all molecules. The vector concatenates the H₀ and H₁ Betti curves on that grid (64 + 64) with the two persistence entropies.
+- **TDA conditioning** (feature-wise linear modulation): z_PH passes through a small network whose output modulates the backbone's *final* representation — a per-channel scale and shift on the invariant (scalar) channels, and a single invariant multiplicative gate on the equivariant (vector) channels. It is applied after the backbone and never mixes irreducible representations (*irreps*), so exact E(3) equivariance is preserved. The last layer is zero-initialized, so at initialization the conditioned model reproduces the baseline exactly.
 - **Splits**: random · topology-OOD (train few-ring → test ring-rich) · group-random (molecules grouped by canonical SMILES, whole groups assigned at random).
 - **Controls run**: shuffled z_PH, matched-capacity random features of equal dimension, and an element-augmented 4D persistence variant. A ring-count baseline, a larger-receptive-field baseline and a separate matched-parameter baseline were scoped but not run.
 - **Metrics**: dipole vector MAE + angular error; polarizability Frobenius, isotropic/anisotropic split, eigenvalue error; exact equivariance check.
 
 ## Interactive visualization
 
-![Zwitterion: ball-and-stick geometry with the reference and predicted dipole vectors, beside the electron density coloured by electrostatic potential](assets/hero_90694.png)
+![Zwitterion: ball-and-stick geometry with the reference and predicted dipole vectors, beside the electron density colored by electrostatic potential](assets/hero_90694.png)
 
 *`[NH3+]C1CN2C1C2C([O-])=O`, a held-out test molecule. The charge separation between the ammonium and carboxylate ends — blue and red on the density — is exactly what the dipole vector measures. Density: RHF/6-31G* at the SQuIRL geometry, isosurface 0.002 e/a₀³; potential from charges fitted to the QM electrostatic potential. Generated by `make_density_cubes.py` and `render_hero.py`.*
 
 `index.html` — a WebGL viewer showing true vs predicted dipole vectors on real molecular geometries, with live angular/magnitude error. Live (GitHub Pages): **https://mindvisio.github.io/topo-response/**
 
-> The seven molecules in the viewer, and the one rendered above, are drawn from the **held-out test split** of the topology-OOD experiment — ring-rich molecules the model never saw in training — and span 0.6 to 17 D. The errors on display are therefore genuine generalisation errors, from the same baseline checkpoint the results table below reports.
+> The seven molecules in the viewer, and the one rendered above, are drawn from the **held-out test split** of the topology-OOD experiment — ring-rich molecules the model never saw in training — and span 0.6 to 17 D. The errors on display are therefore genuine generalization errors, produced by the **seed-0 baseline checkpoint** — one of the five seeds the table below aggregates, not the aggregate itself.
 
 ## Status
 
@@ -36,7 +37,12 @@ The dipole/polarizability study on the topology-OOD split is complete. **The tes
 
 Five seeds per arm (baseline / TDA / matched-capacity random), both properties, paired t-tests on the topology-OOD test set. Raw numbers in `results_5seed.csv`; recompute with `compute_ci.py`.
 
-| paired difference | dipole | polarizability |
+Dipole is component-wise mean absolute error (compMAE) in debye; polarizability is the mean
+Frobenius error of the 3x3 tensor in atomic units. A **positive** difference means the first
+method is **worse**. Brackets give the paired 95% confidence interval, and the pairing is over
+the five matched training seeds — not over individual molecules.
+
+| paired difference | dipole, compMAE (D) | polarizability, Frobenius (a.u.) |
 | --- | --- | --- |
 | TDA - baseline | +0.0013 [-0.0036, +0.0063], p=0.50 | +0.2256 [+0.069, +0.382], p=0.016 (nominal only) |
 | TDA - random | +0.0016, p=0.57 | -0.056, p=0.62 |
@@ -44,7 +50,29 @@ Five seeds per arm (baseline / TDA / matched-capacity random), both properties, 
 
 No advantage of geometric z_PH conditioning through feature-wise linear modulation (FiLM) over the plain equivariant baseline or over the matched-capacity random control was detected. The one nominally significant effect (polarizability, TDA worse than baseline) does not survive multiple-comparison correction over the six reported tests.
 
-This is a qualitative negative result. A separate bonus experiment (`RESIDUAL_PROBE_REPORT.md`) freezes the baseline and asks whether `z_PH` can linearly predict the part of its residual an equivariance-preserving correction may touch; neither that linear probe nor a small nonlinear one detected signal beyond matched random and shuffled controls, consistent with the result above. It does **not** establish that persistent homology is uninformative or equivalent to noise: no equivalence margin was pre-specified, the confidence intervals remain wide, and the finding does not generalise beyond this descriptor, conditioning scheme, dataset and split. `RUN_MANIFEST.md` states the caveats in full.
+This is a qualitative negative result. A separate bonus experiment (`RESIDUAL_PROBE_REPORT.md`) freezes the baseline and asks whether `z_PH` can linearly predict the part of its residual an equivariance-preserving correction may touch; neither that linear probe nor a small nonlinear one detected signal beyond matched random and shuffled controls, consistent with the result above. It does **not** establish that persistent homology is uninformative or equivalent to noise: no equivalence margin was pre-specified, the confidence intervals remain wide, and the finding does not generalize beyond this descriptor, conditioning scheme, dataset and split. `RUN_MANIFEST.md` states the caveats in full.
+
+## Glossary
+
+| term | meaning |
+| --- | --- |
+| E(3) | the Euclidean group: rotations, reflections and translations. An *equivariant* model's output transforms the same way as its input under these |
+| irrep | irreducible representation. Scalars (l=0) and vectors (l=1) transform independently; mixing them would break equivariance |
+| TDA / PH | topological data analysis; persistent homology (PH) is the method within TDA used here |
+| H0 / H1 | connected components / independent loops, tracked across the filtration |
+| OOD | out-of-distribution: the test set is drawn from a different regime than training (here, more rings) |
+| FiLM | feature-wise linear modulation: a learned per-channel scale and shift |
+| PaiNN | Polarizable Atom Interaction Neural Network, the equivariant message-passing backbone |
+| SQuIRL | Spectral Quantum Chemistry and Infrared Resonance Library, the source dataset |
+| MAE / compMAE | mean absolute error; compMAE averages it over the three Cartesian components |
+| Frobenius error | the norm of the difference between predicted and reference 3x3 tensors |
+| R^2 | fraction of variance explained out of sample; R^2 <= 0 means no better than predicting the mean |
+| CI | confidence interval |
+| MLP | multilayer perceptron |
+| RHF | restricted Hartree-Fock, the level of theory behind the figure's electron density |
+| ESP | electrostatic potential, used to color that density |
+| D / a.u. / a0 | debye (dipole); atomic units (polarizability, in bohr^3); bohr radius |
+| SMILES | a line notation for molecular structure |
 
 ## Reproduce
 
