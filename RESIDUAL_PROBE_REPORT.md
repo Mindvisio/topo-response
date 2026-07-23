@@ -122,21 +122,67 @@ in-sample train residuals, same estimator) gives the same sign and a comparable 
 main-path +0.000169 and +0.0327 -- so the direction is not an artefact of optimistic
 training residuals.
 
+## Nonlinear probe (MLP)
+
+A linear probe finding nothing leaves one reading open: that the relation exists
+but is nonlinear and Ridge could not see it. To close that reading as far as a
+small network can, the same experiment was repeated with an MLP
+(130 -> 64 -> 32 -> k, ReLU) in place of Ridge, on the well-conditioned **primary
+basis only**. Everything else is identical -- train-only standardisation of
+descriptors and coefficient targets, the same architecture, optimiser, schedule
+and early-stopping rule for every arm, and the test set opened once. Each of the
+5 baseline seeds gets 3 weight initialisations, and the random and shuffled
+controls additionally get 5 descriptor realizations; initialisations and
+realizations are averaged **within** a baseline seed, so the unit of replication
+is still the seed (n=5). Early stopping uses the validation split only.
+
+This is a **separate pre-declared family** of six tests. It is not an extension of
+the Ridge family above, and it does not revise those conclusions.
+
+Probe R^2 (test-mean reference):
+
+| property | tda (mean) | tda (median) | random | shuffled |
+| --- | --- | --- | --- | --- |
+| dipole | -0.091 | -0.042 | -0.017 | -0.016 |
+| polar | -0.141 | -0.153 | -0.148 | -0.148 |
+
+The dipole `tda` mean is pulled down by a single bad fit at R^2 = -0.68, so the
+median is the more representative summary; both are below the controls.
+
+Physical-metric paired differences (n=5; positive = correction made it worse):
+
+| property | delta_tda (mean +/- sd) | tda vs random | tda vs shuffled |
+| --- | --- | --- | --- |
+| dipole | +0.0016 +/- 0.0016 | +0.0014 p=0.118 | +0.0014 p=0.113 |
+| polar | +0.0283 +/- 0.0188 | -0.0012 p=0.951 | -0.0003 p=0.987 |
+
+Holm over this family: the smallest adjusted p is 0.168 (polar `tda` vs `null`,
+and its sign is positive, i.e. the correction hurts); nothing is significant.
+
+Every R^2 is again at or below zero, so the nonlinear probe likewise has no
+positive out-of-sample explanatory power, and TDA separates from neither control
+on either readout. One diagnostic is worth recording: on the real descriptor the
+networks train markedly longer before early stopping -- median 50 epochs for the
+dipole against 16-19 on random and shuffled -- yet generalise no better, and for
+the dipole slightly worse. The descriptor does carry structure a network can latch
+onto during training; that structure does not transfer to held-out molecules.
+
 ## Conclusion
 
-Within the chosen linear equivariant probe, no additional predictive signal from
-`z_PH` was detected beyond matched random and shuffled controls: the probe does not
-reduce the frozen baseline's held-out error, and does not predict the correction
+Neither a linear nor a small nonlinear equivariant probe detected additional
+predictive signal from `z_PH` beyond matched random and shuffled controls: neither
+reduces the frozen baseline's held-out error, and neither predicts the correction
 coefficients better than a random descriptor of the same shape — for either
-property, in either basis, on the topology-OOD split. This is consistent with the
+property, on the topology-OOD split. This is consistent with the
 main 5-seed negative and narrows the space in which a usable residual signal could
 still be hiding.
 
 What this does **not** show. "No effect detected" is not proven equivalence. The
-coefficient targets are the linear projection of the residual onto a fixed
-low-dimensional tensor basis, so a non-linear probe, a richer or better-conditioned
-equivariant basis, a different descriptor, or a different dataset or split could
-behave differently. The secondary bases are exploratory and ill-conditioned, so
+coefficient targets are the projection of the residual onto a fixed
+low-dimensional tensor basis, so a richer or better-conditioned equivariant basis, a
+larger or differently regularised network, a different descriptor, or a different
+dataset or split could still behave differently; two probes agreeing is evidence, not
+proof. The secondary bases are exploratory and ill-conditioned, so
 they support no independent claim. The result is a qualitative negative about this
 descriptor and these corrections.
 
@@ -150,6 +196,8 @@ The harness runs the whole cycle: it exports the frozen baseline predictions for
 both properties and all five seeds (the only GPU-assisted stage, and the only one
 that needs the checkpoints), refuses to continue unless all ten export files are
 present, runs the equivariance gate, fits the probes, and computes the statistics.
-Set `SKIP_EXPORT=1` to reuse an existing `probe_cache/`. Per-seed numbers land in
+Set `SKIP_EXPORT=1` to reuse an existing `probe_cache/`, and `RUN_MLP=1` to add the
+nonlinear probe (`residual_probe_mlp.py`, about 20 minutes on CPU) with its separate
+analysis. Per-seed numbers land in
 `results/residual_probe_per_seed.csv` (including the per-basis conditioning
 diagnostics), the aggregate in `results/residual_probe_summary.json`.

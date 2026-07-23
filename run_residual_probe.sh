@@ -78,4 +78,16 @@ $PY test_probe_equivariance.py
 $PY residual_probe.py --cache "$CACHE" --props $PROPS --seeds $SEEDS
 
 # 3. paired n=5 statistics with a Holm correction over the declared family
-$PY analyze_residual_probe.py
+$PY analyze_residual_probe.py --label 'Ridge probe'
+
+# 4. optional nonlinear probe: same question, MLP instead of Ridge, primary basis
+#    only.  Its six tests are a SEPARATE pre-declared family, not an extension of
+#    the Ridge family, so it is analysed and reported separately.
+if [ "${RUN_MLP:-0}" = "1" ]; then
+  $PY residual_probe_mlp.py --cache "$CACHE" --props $PROPS --seeds $SEEDS
+  $PY analyze_residual_probe.py \
+    --csv results/residual_probe_mlp_per_seed.csv \
+    --out results/residual_probe_mlp_summary.json \
+    --rows-per-seed tda=3 random=15 shuffled=15 \
+    --label 'MLP probe'
+fi

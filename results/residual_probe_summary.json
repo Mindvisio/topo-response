@@ -245,5 +245,6 @@
    "p_holm": 1.0
   }
  },
+ "family_label": "Ridge probe",
  "holm_note": "family = the 6 primary-basis tda-vs-control tests; Holm threshold for the smallest is 0.05/6 = 0.0083"
 }

@@ -24,14 +24,21 @@ def load(path):
     for r in rows:
         for k in ('seed', 'realization'):
             r[k] = int(r[k])
-        for k in ('baseline', 'corrected', 'delta', 'frac_small'):
+        for k in ('baseline', 'corrected', 'delta'):
             r[k] = float(r[k])
+        # optional columns: the MLP probe records neither a sensitivity refit nor
+        # the basis conditioning, so treat them as absent rather than required
+        for k in ('frac_small', 'sens_delta'):
+            v = r.get(k, '')
+            r[k] = float(v) if v not in ('', None) else np.nan
         r['probe_r2_mean'] = float(r['probe_r2_mean']) if r['probe_r2_mean'] else np.nan
-        r['sens_delta'] = float(r['sens_delta']) if r['sens_delta'] else np.nan
     return rows
 
 
 EXPECTED_SEEDS = 5
+# Rows per seed per arm.  The Ridge probe fits one model per descriptor; the MLP
+# probe multiplies each descriptor by its weight initialisations, so the counts
+# are overridable from the command line rather than hard-coded to one design.
 EXPECTED_REALIZATIONS = {'null': 1, 'tda': 1, 'random': 5, 'shuffled': 5}
 
 
@@ -85,10 +92,21 @@ def holm(pvals):
 
 
 def main():
+    global EXPECTED_SEEDS
     ap = argparse.ArgumentParser()
     ap.add_argument('--csv', default='results/residual_probe_per_seed.csv')
     ap.add_argument('--out', default='results/residual_probe_summary.json')
+    ap.add_argument('--seeds', type=int, default=EXPECTED_SEEDS,
+                    help='required number of baseline seeds')
+    ap.add_argument('--rows-per-seed', nargs='*', default=[],
+                    help='override rows expected per seed, e.g. tda=3 random=15 shuffled=15')
+    ap.add_argument('--label', default='Ridge probe',
+                    help='name of this pre-declared family, used in the printout')
     a = ap.parse_args()
+    EXPECTED_SEEDS = a.seeds
+    for item in a.rows_per_seed:
+        arm, _, cnt = item.partition('=')
+        EXPECTED_REALIZATIONS[arm] = int(cnt)
     rows = load(a.csv)
     summary = {}
     family = []                                          # (label, pvalue) for the Holm family
@@ -120,19 +138,22 @@ def main():
                     and not np.isnan(r['sens_delta'])]
             if sens:
                 block['sensitivity_delta_mean'] = float(np.mean(sens))
-            block['frac_small'] = float(np.mean([r['frac_small'] for r in rows
-                                                 if r['property'] == prop and r['basis'] == basis]))
+            fs = [r['frac_small'] for r in rows
+                  if r['property'] == prop and r['basis'] == basis and r['frac_small'] == r['frac_small']]
+            if fs:
+                block['frac_small'] = float(np.mean(fs))
             summary[prop][basis] = block
     labels = [x[0] for x in family]; ps = np.array([x[1] for x in family])
     adj = holm(ps)
     summary['holm_family'] = {lab: {'p': float(p), 'p_holm': float(pa)}
                               for lab, p, pa in zip(labels, ps, adj)}
+    summary['family_label'] = a.label
     summary['holm_note'] = ('family = the %d primary-basis tda-vs-control tests; '
                             'Holm threshold for the smallest is 0.05/%d = %.4f' %
                             (len(family), len(family), 0.05 / max(len(family), 1)))
     json.dump(summary, open(a.out, 'w'), indent=1)
 
-    print('=== residual probe summary (n=5 seeds, topology-OOD) ===')
+    print('=== %s: residual probe summary (n=%d seeds, topology-OOD) ===' % (a.label, a.seeds))
     for prop in ['dipole', 'polar']:
         pm = summary[prop]['primary_metric']
         print('\n%s  (primary metric %s; positive delta = correction HURT)' % (prop.upper(), pm))
@@ -140,7 +161,10 @@ def main():
             b = summary[prop].get(basis)
             if not b:
                 continue
-            print('  [%s basis]  frac |mu|<0.1D or near-iso = %.4f' % (basis, b['frac_small']))
+            if 'frac_small' in b:
+                print('  [%s basis]  frac |mu|<0.1D or near-iso = %.4f' % (basis, b['frac_small']))
+            else:
+                print('  [%s basis]' % basis)
             print('    probe R2: tda %.3f | random %.3f | shuffled %.3f'
                   % (b['probe_r2_tda_mean'], b['probe_r2_random_mean'], b['probe_r2_shuffled_mean']))
             print('    delta_tda per seed: %s' % ['%+.4f' % x for x in b['delta_tda_per_seed']])
