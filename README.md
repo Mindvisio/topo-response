@@ -52,6 +52,18 @@ No advantage of geometric z_PH conditioning through feature-wise linear modulati
 
 This is a qualitative negative result. A separate bonus experiment (`RESIDUAL_PROBE_REPORT.md`) freezes the baseline and asks whether `z_PH` can linearly predict the part of its residual an equivariance-preserving correction may touch; neither that linear probe nor a small nonlinear one detected signal beyond matched random and shuffled controls, consistent with the result above. It does **not** establish that persistent homology is uninformative or equivalent to noise: no equivalence margin was pre-specified, the confidence intervals remain wide, and the finding does not generalize beyond this descriptor, conditioning scheme, dataset and split. `RUN_MANIFEST.md` states the caveats in full.
 
+## License and citation
+
+Code and documentation in this repository are released under the [MIT License](LICENSE).
+`CITATION.cff` gives the citation metadata, which GitHub renders as a *Cite this repository*
+button.
+
+That licence covers this repository's own contents. It does **not** relicence the underlying
+data: molecular geometries and reference dipoles/polarizabilities come from
+[SQuIRL](https://doi.org/10.6084/m9.figshare.30734843), and anything derived from them here
+— the density cubes under `dens/`, the fitted charges, the results tables — remains subject to
+the dataset's own terms. Cite SQuIRL alongside this repository if you use them.
+
 ## Glossary
 
 | term | meaning |

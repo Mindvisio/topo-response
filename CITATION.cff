@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you refer to this work, please cite it as below."
+title: "TopoResponse: does persistent homology help an E(3)-equivariant model predict molecular dipoles and polarizabilities?"
+type: software
+authors:
+  - name: "Mindvisio"
+license: MIT
+repository-code: "https://github.com/Mindvisio/topo-response"
+url: "https://mindvisio.github.io/topo-response/"
+date-released: "2026-07-23"
+keywords:
+  - equivariant neural networks
+  - persistent homology
+  - topological data analysis
+  - molecular property prediction
+  - negative results
+abstract: >-
+  A controlled study of topological conditioning for molecular response properties.
+  Across five seeds on a topology-out-of-distribution split, persistent-homology
+  conditioning showed no advantage over the plain equivariant baseline or over
+  matched-capacity random and shuffled controls; linear and small nonlinear residual
+  probes on the frozen baseline likewise found no beneficial correction. A qualitative
+  negative, specific to this descriptor, conditioning scheme, dataset and split.
