@@ -8,7 +8,6 @@ Three panels that together tell the study's story honestly:
 Run: python make_figures.py   (CPU, ~1 min)
 """
 import json
-import textwrap
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
@@ -226,14 +225,15 @@ def fig_baselines():
                              gridspec_kw={'width_ratios': [1.35, 1]})
     ax = axes[0]
     y = np.arange(len(labels))[::-1]
-    ax.barh(y, vals, xerr=errs, color=cols, height=.62, capsize=4,
-            error_kw=dict(lw=1.4, ecolor='#333'))
-    for yy, v in zip(y, vals):
-        ax.text(v + .035, yy, '%.3f' % v, va='center', fontsize=9.5)
+    ax.barh(y, vals, xerr=errs, color=cols, height=.62, capsize=0,
+            error_kw=dict(lw=1.6, ecolor='#2b2b2b'))
+    for yy, v, e in zip(y, vals, errs):
+        lab = '%.3f' % v if e == 0 else '%.3f ± %.3f' % (v, e)
+        ax.text(v + e + .05, yy, lab, va='center', fontsize=9.5)
     ax.set_yticks(y)
     ax.set_yticklabels(labels, fontsize=9)
     ax.set_xlabel('dipole component-wise MAE (D), lower is better')
-    ax.set_xlim(0, max(vals) * 1.20)
+    ax.set_xlim(0, max(vals) * 1.42)
     ax.set_title('the same task, with and without the geometric bias', loc='left')
 
     ax = axes[1]
@@ -248,16 +248,14 @@ def fig_baselines():
     ax.set_ylim(0, fr.mean() * 1.28)
     ax.set_ylabel('dipole compMAE (D)')
     ax.set_title('rotating the test set', loc='left')
-    ax.legend(loc='center left', frameon=True)
-    note = ('molecule and reference dipole rotate together, so the task is unchanged; '
-            'PaiNN is invariant here by construction, verified to float32 round-off')
-    ax.text(.02, .03, textwrap.fill(note, 46), transform=ax.transAxes,
-            fontsize=8.0, color='#555', va='bottom')
+    ax.legend(loc='upper left', frameon=True)
 
     fig.suptitle('Dropping the geometric inductive bias costs a factor of seven, and leaves '
                  'the model sensitive to orientation',
                  fontsize=12, fontweight='bold', y=1.0)
-    fig.tight_layout(rect=[0, 0, 1, .92])
+    fig.text(.5, .012, 'Rotation test: molecule and reference dipole rotate together, so the task is unchanged; PaiNN is invariant here by construction, verified to float32 round-off',
+             ha='center', fontsize=8.4, color='#555')
+    fig.tight_layout(rect=[0, .055, 1, .92])
     fig.savefig('assets/fig_baselines.png', bbox_inches='tight')
     plt.close(fig)
     print('wrote assets/fig_baselines.png')
