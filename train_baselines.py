@@ -100,8 +100,13 @@ def fcnn_dipole(seed, cache, tgt, hidden=(512, 256, 128), epochs=120, batch=512,
     with torch.no_grad():
         pred_rot = net(torch.tensor((frot - mu) / sd, dtype=torch.float32)).numpy()
     y_rot = np.einsum('nij,nj->ni', R, te_y)      # the true dipole rotates with the molecule
+    # compMAE averages |e_x|+|e_y|+|e_z|, an L1 norm, which is NOT invariant under
+    # rotation even for a perfectly equivariant model. The rotation comparison
+    # therefore also records the vector L2 error, which is.
     return dict(compMAE=float(np.abs(pred - te_y).mean()),
                 compMAE_rotated=float(np.abs(pred_rot - y_rot).mean()),
+                vecMAE=float(np.linalg.norm(pred - te_y, axis=1).mean()),
+                vecMAE_rotated=float(np.linalg.norm(pred_rot - y_rot, axis=1).mean()),
                 epochs=ep + 1)
 
 

@@ -125,7 +125,7 @@ differences are **positive**: the fitted correction slightly *worsens* the basel
 rather than helping it. A sensitivity refit that uses only validation residuals (no
 in-sample train residuals, same estimator) gives the same sign and a comparable size
 -- +0.000141 D for the dipole and +0.0281 a.u. for the polarizability against the
-main-path +0.000169 and +0.0327 -- so the direction is not an artifact of optimiztic
+main-path +0.000169 and +0.0327 -- so the direction is not an artifact of optimistic
 training residuals.
 
 ## Nonlinear probe (MLP)

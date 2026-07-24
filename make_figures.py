@@ -1,9 +1,12 @@
-"""Figures for the README.
+"""Figures for the README and the bonus report.
 
-Three panels that together tell the study's story honestly:
-  1. the headline negative, shown per seed rather than as a table row;
-  2. whether z_PH encodes molecular topology at all;
-  3. what the descriptor literally looks like, read straight out of cache/zph.npy.
+Six figures that together tell the study's story honestly:
+  1. the method, showing where the conditioning path joins the backbone;
+  2. the headline negative, shown per seed rather than as a table row;
+  3. whether z_PH encodes molecular topology at all;
+  4. what the descriptor literally looks like, read straight out of cache/zph.npy;
+  5. the references without a geometric inductive bias;
+  6. the residual probes (rendered into the bonus report, not the README).
 
 Run: python make_figures.py   (CPU, ~1 min)
 """
@@ -80,10 +83,10 @@ def fig_paired_seeds():
         ax.axvline(0, color='#444', lw=1.1, ls='--', zorder=1)
         ax.set_yticks(ys); ax.set_yticklabels([c[2] for c in comps])
         ax.set_xlabel('paired difference, 95%% CI (%s)' % ('D' if prop == 'dipole' else 'a.u.'))
-        ax.set_title('positive = the first arm is worse', loc='left')
+        ax.set_title('positive = the first arm is worse (nominal CI, uncorrected)', loc='left')
         ax.set_ylim(-.6, len(comps) - .3)
-    fig.suptitle('No seed-consistent effect: TDA conditioning separates from neither the '
-                 'baseline nor a matched random control',
+    fig.suptitle('No detected TDA benefit; the one seed-consistent nominal degradation does '
+                 'not survive the multiplicity correction',
                  fontsize=12.5, fontweight='bold', y=.985)
     fig.text(.5, .008, 'SQuIRL topology-OOD split - 5 training seeds - pairing is by seed, '
                        'not by molecule', ha='center', fontsize=8.6, color='#555')
@@ -215,8 +218,8 @@ def fig_baselines():
     fc = np.array([x['compMAE'] for x in b['fcnn_dipole']])
     fr = np.array([x['compMAE_rotated'] for x in b['fcnn_dipole']])
     mp = b['mean_predictor_dipole_compMAE']
-    labels = ['PaiNN (equivariant)', 'FCNN on raw coordinates',
-              'FCNN, rotated test molecules', 'predicting the training mean']
+    labels = ['PaiNN (equivariant)', 'FCNN on centered padded coordinates',
+              'FCNN, rotated test molecules', 'naive constant (training mean)']
     vals = [eq.mean(), fc.mean(), fr.mean(), mp]
     errs = [eq.std(ddof=1), fc.std(ddof=1), fr.std(ddof=1), 0.0]
     cols = [BLUE, ORANGE, ORANGE, GREY]
@@ -364,7 +367,7 @@ def fig_method():
                   'H' + SUB0 + ' / H' + SUB1 + ' Betti curves',
                   '+ 2 persistence entropies']), PALE_O, ORANGE)
     _box(ax, 7.0, yfilm, 3.5, 0.95,
-         NL.join(['FiLM: scale + shift on s,  invariant gate on v',
+         NL.join(['FiLM: scale + shift on s,  channel-wise invariant gate on v',
                   'no mixing between l=0 and l=1']), PALE_O, ORANGE, fs=9.0)
 
     _arrow(ax, (2.4, ytop), (2.95, ytop), '#6b7280')
@@ -392,7 +395,7 @@ def fig_method():
             fontsize=8.6, color='#444', ha='right', va='bottom',
             bbox=dict(boxstyle='round,pad=0.4', fc='#f5f6f8', ec='#c9ced6'))
     fig.suptitle('Two paths, joined after the backbone: geometry stays equivariant, topology '
-                 'enters only as invariant gain',
+                 'enters only as invariant modulation',
                  fontsize=12, fontweight='bold', y=0.98)
     fig.tight_layout(rect=[0, 0.20, 1, 0.93])
     fig.savefig('assets/fig_method.png', bbox_inches='tight')

@@ -22,7 +22,7 @@ Equivariant message passing (PaiNN, MACE, …) already predicts molecular respon
 - **TDA conditioning** (feature-wise linear modulation): z_PH passes through a small network whose output modulates the backbone's *final* representation — a per-channel scale and shift on the invariant (scalar) channels, and a single invariant multiplicative gate on the equivariant (vector) channels. It is applied after the backbone and never mixes irreducible representations (*irreps*), so exact E(3) equivariance is preserved. The last layer is zero-initialized, so at initialization the conditioned model reproduces the baseline exactly.
 - **Splits**: random · topology-OOD (train few-ring → test ring-rich) · group-random (molecules grouped by canonical SMILES, whole groups assigned at random).
 - **Controls run**: shuffled z_PH, matched-capacity random features of equal dimension, and an element-augmented 4D persistence variant. A ring-count baseline, a larger-receptive-field baseline and a separate matched-parameter baseline were scoped but not run.
-- **Reference models without a geometric bias**: an FCNN on raw padded coordinates predicting the dipole components; a gradient-boosting model on invariant descriptors (composition, size, ring count, z_PH) predicting the two invariant scalars; and the training-mean predictor as a floor. These place the equivariant family rather than compete inside it.
+- **Reference models without a geometric bias**: a simple non-equivariant FCNN on centered, zero-padded coordinates with element one-hots, predicting the dipole components; a gradient-boosting model on invariant descriptors (composition, size, ring count, z_PH) predicting the two invariant scalars; and the training-mean predictor as a floor. These place the equivariant family rather than compete inside it.
 - **Metrics**: dipole vector MAE + angular error; polarizability Frobenius, isotropic/anisotropic split, eigenvalue error; exact equivariance check. The reference models are scored with the same component-wise MAE, and the tabular one with two invariant scalars, |μ| and the isotropic polarizability. Any model without built-in equivariance is additionally evaluated on a **rigidly rotated copy of the test set** — molecule and reference dipole rotated together, so the task is unchanged and what the rerun measures is orientation sensitivity alone.
 
 ## Interactive visualization
@@ -49,9 +49,9 @@ All methods on the same held-out test set, regenerate with `make_results_table.p
 | PaiNN baseline | E(3)-equivariant | 0.0923 ± 0.0025 | 2.103 ± 0.169 |
 | PaiNN + TDA conditioning | E(3)-equivariant | 0.0936 ± 0.0060 | 2.328 ± 0.137 |
 | PaiNN + matched random features | E(3)-equivariant | 0.0920 ± 0.0046 | 2.384 ± 0.277 |
-| FCNN on raw coordinates | none | 0.6593 ± 0.0074 | -- |
-| the same FCNN, test molecules rotated | none | 0.8689 ± 0.0117 | -- |
-| predicting the training mean | none | 1.2920 | -- |
+| FCNN on centered padded coordinates | none | 0.6593 ± 0.0074 | -- |
+| the same FCNN, rotated test molecules | none | 0.8689 ± 0.0117 | -- |
+| naive constant (training mean) | none | 1.2920 | -- |
 
 Lower is better; ± is the sample standard deviation over the five training seeds.
 The equivariant arms differ only in what the conditioning path is fed. Cells marked
@@ -60,8 +60,10 @@ dipole task only.
 <!-- results-table:end -->
 
 The three equivariant arms sit on top of each other while everything without a geometric
-inductive bias is an order of magnitude behind — which is the comparison the paired tests
-below then quantify.
+inductive bias is several times behind — which is the comparison the paired tests below
+then quantify. That gap is a reference comparison, not a matched ablation: the reference
+models differ from PaiNN in message passing, permutation invariance, architecture and
+training at once, so it cannot be attributed to equivariance alone.
 
 Dipole is component-wise mean absolute error (compMAE) in debye; polarizability is the mean
 Frobenius error of the 3x3 tensor in atomic units. A **positive** difference means the first
@@ -80,41 +82,6 @@ No advantage of geometric z_PH conditioning through feature-wise linear modulati
 
 This is a qualitative negative result. A separate bonus experiment (`RESIDUAL_PROBE_REPORT.md`) freezes the baseline and asks whether `z_PH` can linearly predict the part of its residual an equivariance-preserving correction may touch; neither that linear probe nor a small nonlinear one detected signal beyond matched random and shuffled controls, consistent with the result above. It does **not** establish that persistent homology is uninformative or equivalent to noise: no equivalence margin was pre-specified, the confidence intervals remain wide, and the finding does not generalize beyond this descriptor, conditioning scheme, dataset and split. `RUN_MANIFEST.md` states the caveats in full.
 
-## License and citation
-
-Code and documentation in this repository are released under the [MIT License](LICENSE).
-`CITATION.cff` gives the citation metadata, which GitHub renders as a *Cite this repository*
-button.
-
-That licence covers this repository's own contents. It does **not** relicence the underlying
-data: molecular geometries and reference dipoles/polarizabilities come from
-[SQuIRL](https://doi.org/10.6084/m9.figshare.30734843), and anything derived from them here
-— the density cubes under `dens/`, the fitted charges, the results tables — remains subject to
-the dataset's own terms. Cite SQuIRL alongside this repository if you use them.
-
-## Glossary
-
-| term | meaning |
-| --- | --- |
-| E(3) | the Euclidean group: rotations, reflections and translations. An *equivariant* model's output transforms the same way as its input under these |
-| irrep | irreducible representation. Scalars (l=0) and vectors (l=1) transform independently; mixing them would break equivariance |
-| TDA / PH | topological data analysis; persistent homology (PH) is the method within TDA used here |
-| H₀ / H₁ | connected components / independent loops, tracked across the filtration |
-| OOD | out-of-distribution: the test set is drawn from a different regime than training (here, more rings) |
-| FiLM | feature-wise linear modulation: a learned per-channel scale and shift |
-| PaiNN | Polarizable Atom Interaction Neural Network, the equivariant message-passing backbone |
-| SQuIRL | Spectral Quantum Chemistry and Infrared Resonance Library, the source dataset |
-| MAE / compMAE | mean absolute error; compMAE averages it over the three Cartesian components |
-| Frobenius error | the norm of the difference between predicted and reference 3x3 tensors |
-| R² | fraction of variance explained out of sample; R² ≤ 0 means no better than predicting the mean |
-| CI | confidence interval |
-| MLP | multilayer perceptron |
-| FCNN | fully connected neural network: a plain multilayer perceptron with no geometric structure built in |
-| RHF | restricted Hartree-Fock, the level of theory behind the figure's electron density |
-| ESP | electrostatic potential, used to color that density |
-| D / a.u. / a₀ | debye (dipole); atomic units (polarizability, in bohr³); a₀ is the bohr radius |
-| SMILES | a line notation for molecular structure |
-
 ## What the geometric inductive bias buys
 
 The paired tests above compare arms inside the equivariant family. The rows without a
@@ -122,8 +89,8 @@ geometric inductive bias are what put that family in context.
 
 ![Left: dipole error for each method, from the equivariant model up to the training-mean predictor. Right: the same test molecules rotated, where the plain network loses another third while the equivariant model is unchanged.](assets/fig_baselines.png)
 
-Those rows are already in the table above. The plain network is 7.1x worse and closes less than half the distance from the
-constant predictor to the equivariant model. The third row measures the missing
+Those rows are already in the table above. The plain network is 7.1x worse, closing about
+half the distance (53%) from the naive constant to the equivariant model. The third row measures the missing
 symmetry directly: rotating each test molecule (and its reference dipole with it)
 leaves the task unchanged but costs the FCNN a further 32%, while the equivariant
 model is provably unaffected - `e3_test.py` puts its rotation error at float32
@@ -158,7 +125,7 @@ component orders molecules by ring count on its own.
 ![PCA of z_PH colored by ring count, and the distribution of PC1 per ring count. The
 components separate by topology and a linear read-out recovers ring count with R² = 0.62.](assets/fig_zph_structure.png)
 
-The descriptor is literally the two Betti curves below, sampled on a fixed grid and concatenated with two persistence entropies. H₁ counts independent loops, so it responds directly to rings; the curves separate cleanly by ring count.
+The descriptor is literally the two Betti curves below, sampled on a fixed grid and concatenated with two persistence entropies. H₁ counts independent loops of the atom point cloud, which is not the same object as a chemical ring; empirically its curves still separate by graph-derived ring count on this dataset.
 
 ![Median H0 and H1 Betti curves by ring count, with interquartile shading. H1 separates clearly by the number of rings.](assets/fig_betti_curves.png)
 
@@ -173,6 +140,12 @@ PY=python RUN_MLP=1 bash run_residual_probe.sh   # the bonus probes end to end
 python build_baseline_cache.py && python train_baselines.py   # the non-equivariant references
 python make_results_table.py --write      # refresh the results table in this README
 ```
+
+The two baseline commands are the exception: they need artifacts that are deliberately not
+in the repository — `cache/squirl.db`, `cache/index.json`, `cache/zph.npy`, the split file
+`cache/split_topology_ood.npz`, and the frozen predictions under `probe_cache/`. Build the
+first four with the data and feature scripts listed below, and `probe_cache/` with
+`export_baseline_predictions.py`.
 
 `compute_ci.py` reads the committed CSV, so the headline statistics reproduce from a clean
 clone with no training run and no GPU. Reproducing the checkpoints themselves needs a GPU and
@@ -200,7 +173,42 @@ the equivariance check and every caveat attached to the result. Regenerating the
 
 **Viewer and figures**
 - `index.html` — interactive dipole viewer; `viewer_infer.py`, `make_viewer_manifest.py` — its predictions and provenance
-- `make_density_cubes.py` — electron density + fitted charges; `render_hero.py` — the cover image
+- `make_density_cubes.py` — electron density + fitted charges; `render_hero.py` — the cover image. Visualization only: neither the density nor the electrostatic potential is used as model input
 - `make_figures.py` — the method schematic and the result figures, rebuilt from the committed CSV and z_PH cache
-- `build_baseline_cache.py`, `train_baselines.py` — the non-equivariant references: an FCNN on raw coordinates (scored on rotated copies too) and a tabular model on invariant descriptors
+- `build_baseline_cache.py`, `train_baselines.py` — the non-equivariant references: an FCNN on centered padded coordinates (scored on rotated copies too) and a tabular model on invariant descriptors
 - `make_results_table.py` — regenerates the results table in this README from the committed CSV and JSON, so the numbers cannot drift; `make_figures.py` covers the four figures
+
+## Glossary
+
+| term | meaning |
+| --- | --- |
+| E(3) | the Euclidean group: rotations, reflections and translations. An *equivariant* model's output transforms the same way as its input under these |
+| irrep | irreducible representation. Scalars (l=0) and vectors (l=1) transform independently; mixing them would break equivariance |
+| TDA / PH | topological data analysis; persistent homology (PH) is the method within TDA used here |
+| H₀ / H₁ | connected components / independent loops, tracked across the filtration |
+| OOD | out-of-distribution: the test set is drawn from a different regime than training (here, more rings) |
+| FiLM | feature-wise linear modulation: a learned per-channel scale and shift |
+| PaiNN | Polarizable Atom Interaction Neural Network, the equivariant message-passing backbone |
+| SQuIRL | Spectral Quantum Chemistry and Infrared Resonance Library, the source dataset |
+| MAE / compMAE | mean absolute error; compMAE averages it over the three Cartesian components |
+| Frobenius error | the norm of the difference between predicted and reference 3x3 tensors |
+| R² | fraction of variance explained out of sample; R² ≤ 0 means no better than predicting the mean |
+| CI | confidence interval |
+| MLP | multilayer perceptron |
+| FCNN | fully connected neural network: a plain multilayer perceptron with no geometric structure built in |
+| RHF | restricted Hartree-Fock, the level of theory behind the figure's electron density |
+| ESP | electrostatic potential, used to color that density |
+| D / a.u. / a₀ | debye (dipole); atomic units (polarizability, in bohr³); a₀ is the bohr radius |
+| SMILES | a line notation for molecular structure |
+
+## License and citation
+
+Code and documentation in this repository are released under the [MIT License](LICENSE).
+`CITATION.cff` gives the citation metadata, which GitHub renders as a *Cite this repository*
+button.
+
+That licence covers this repository's own contents. It does **not** relicence the underlying
+data: molecular geometries and reference dipoles/polarizabilities come from
+[SQuIRL](https://doi.org/10.6084/m9.figshare.30734843), and anything derived from them here
+— the density cubes under `dens/`, the fitted charges, the results tables — remains subject to
+the dataset's own terms. Cite SQuIRL alongside this repository if you use them.

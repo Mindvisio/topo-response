@@ -310,7 +310,7 @@ def arm_realizations(kind, seed):
 def sensitivity_direction(prop, ex, S_by_split, coef_full, masks, basis, alphas, zph_all):
     """Refit using ONLY a val-derived split (no in-sample train residuals) and
     report the sign of Delta on test, to check the direction is not an artifact
-    of the baseline's optimiztic train residuals."""
+    of the baseline's optimistic train residuals."""
     nva = len(ex['val']['pred'])
     rng = np.random.default_rng(12345)
     perm = rng.permutation(nva)

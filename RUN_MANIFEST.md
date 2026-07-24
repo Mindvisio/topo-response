@@ -35,6 +35,27 @@ Statistical caveats (IMPORTANT):
 
 Verdict (careful, qualitative): On 5 seeds, NO advantage of geometric z_PH + FiLM over baseline PaiNN or the matched-capacity random control was DETECTED on topology-OOD. For dipole the effect is statistically indeterminate around zero. For polarizability TDA nominally worsens vs baseline, but neither an advantage nor an equivalence of TDA vs random is established. The tested hypothesis was NOT SUPPORTED in the studied configuration. This is a qualitative negative; it does NOT establish that PH is equivalent to noise, that PH carries no information, that the conditioning path provably hurts, that PaiNN is generally sufficient, or that the hypothesis is strictly rejected; it does not generalize beyond this descriptor / conditioning / dataset / OOD split.
 
+## Reference models without a geometric bias (train_baselines.py)
+
+- FCNN: input = centered coordinates zero-padded to 29 atoms, element one-hots (H C N O F) and a
+  padding mask, flattened to 261 features and standardized on train only. Hidden layers
+  512-256-128 with SiLU, linear head to the 3 dipole components in debye. Adam, lr 1e-3,
+  batch 512, at most 120 epochs, early stopping on validation MSE with patience 12. Seeds 0-4,
+  matching the equivariant matrix.
+- Rotation protocol: for each test molecule a random rotation is drawn (QR of a Gaussian matrix,
+  determinant forced to +1, seeded by `baseline_seed + 991`); coordinates and the reference
+  dipole are rotated by the same matrix, so the task is unchanged. NOTE that component-wise MAE
+  is an L1 quantity and is NOT rotation-invariant even for an exactly equivariant model; the
+  rotation comparison therefore uses the vector L2 error, which is.
+- Tabular model: sklearn HistGradientBoostingRegressor, max_iter 400, random_state 0, on
+  composition counts, atom count, ring count and the 130-D z_PH; targets are the two invariant
+  scalars. Scored on validation as well as test, because it beats the constant in distribution
+  and loses to it under the topology shift.
+- Naive constant: the training mean. For an absolute-error metric the optimal constant is the
+  median, so this is a plain reference point rather than a tight lower bound.
+- Inputs: cache/baseline_inputs.npz (built by build_baseline_cache.py), cache/zph.npy and the
+  frozen exports in probe_cache/. Outputs: results/baselines.json.
+
 ## Equivariance check (e3_test.py)
 
 TDACondition is identity-initialised, so a freshly built conditioned model emits exactly zero scale/shift/gate and an equivariance test on it never touches the conditioning path. The check therefore also runs on the trained checkpoints, and reports how strong the learned modulation is before testing. Checkpoints are loaded with strict=True, so a partial load fails instead of quietly scoring a half-initialised model.
