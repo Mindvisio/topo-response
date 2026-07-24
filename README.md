@@ -14,6 +14,9 @@ Equivariant message passing (PaiNN, MACE, …) already predicts molecular respon
 
 ## Method
 
+![Schematic: molecule geometry feeds an equivariant PaiNN backbone producing invariant scalar and equivariant vector representations, and separately feeds a persistence pipeline producing the invariant z_PH descriptor; a FiLM network turns z_PH into a scale, a shift and a gate that modulate the backbone output after message passing, without mixing irreducible representations.](assets/fig_method.png)
+
+
 - **Backbone**: E(3)-equivariant network (SchNetPack PaiNN) with dipole (ℓ=1) and polarizability (ℓ=0⊕ℓ=2) heads.
 - **z_PH descriptor (130-D)**: Vietoris–Rips persistence of the 3D point cloud, over *all* atoms and using *no* element information. Coordinates are centered and divided by the molecular diameter, so every filtration value falls in [0,1] and one fixed 64-point grid is shared by all molecules. The vector concatenates the H₀ and H₁ Betti curves on that grid (64 + 64) with the two persistence entropies.
 - **TDA conditioning** (feature-wise linear modulation): z_PH passes through a small network whose output modulates the backbone's *final* representation — a per-channel scale and shift on the invariant (scalar) channels, and a single invariant multiplicative gate on the equivariant (vector) channels. It is applied after the backbone and never mixes irreducible representations (*irreps*), so exact E(3) equivariance is preserved. The last layer is zero-initialized, so at initialization the conditioned model reproduces the baseline exactly.
@@ -198,6 +201,6 @@ the equivariance check and every caveat attached to the result. Regenerating the
 **Viewer and figures**
 - `index.html` — interactive dipole viewer; `viewer_infer.py`, `make_viewer_manifest.py` — its predictions and provenance
 - `make_density_cubes.py` — electron density + fitted charges; `render_hero.py` — the cover image
-- `make_figures.py` — the three result figures above, rebuilt from the committed CSV and z_PH cache
+- `make_figures.py` — the method schematic and the result figures, rebuilt from the committed CSV and z_PH cache
 - `build_baseline_cache.py`, `train_baselines.py` — the non-equivariant references: an FCNN on raw coordinates (scored on rotated copies too) and a tabular model on invariant descriptors
 - `make_results_table.py` — regenerates the results table in this README from the committed CSV and JSON, so the numbers cannot drift; `make_figures.py` covers the four figures

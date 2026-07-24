@@ -316,9 +316,90 @@ def fig_residual_probes():
     plt.close(fig)
     print('wrote assets/fig_residual_probes.png')
 
+def _box(ax, cx, cy, w, h, text, fc, ec, fs=9.2, weight='normal'):
+    from matplotlib.patches import FancyBboxPatch
+    ax.add_patch(FancyBboxPatch((cx - w / 2, cy - h / 2), w, h,
+                                boxstyle='round,pad=0.05,rounding_size=0.14',
+                                linewidth=1.6, facecolor=fc, edgecolor=ec, zorder=2))
+    ax.text(cx, cy, text, ha='center', va='center', fontsize=fs,
+            fontweight=weight, zorder=3)
+
+
+def _arrow(ax, xy_from, xy_to, color, style='-|>', lw=1.9, ls='-'):
+    from matplotlib.patches import FancyArrowPatch
+    ax.add_patch(FancyArrowPatch(xy_from, xy_to, arrowstyle=style, color=color,
+                                 linewidth=lw, linestyle=ls, mutation_scale=15,
+                                 shrinkA=2, shrinkB=2, zorder=1))
+
+
+def fig_method():
+    """How the two paths meet: conditioning acts after the backbone, never across irreps."""
+    NL = chr(10)
+    MU, AL, OPLUS = chr(956), chr(945), chr(8853)
+    SUB0, SUB1 = chr(8320), chr(8321)
+    fig, ax = plt.subplots(figsize=(11.4, 5.6))
+    ax.set_xlim(0, 11.4)
+    ax.set_ylim(0, 5.6)
+    ax.axis('off')
+    PALE_B, PALE_O, PALE_G = '#e8eef6', '#fbeee0', '#eef0f2'
+    ytop, yfilm, ybot = 4.45, 2.55, 1.05
+
+    _box(ax, 1.3, ytop, 2.2, 1.05,
+         NL.join(['molecule', 'atoms + 3D coordinates']), PALE_G, '#6b7280')
+    _box(ax, 4.1, ytop, 2.3, 1.05,
+         NL.join(['PaiNN', 'equivariant message passing']), PALE_B, BLUE)
+    _box(ax, 7.0, ytop, 2.4, 1.25,
+         NL.join(['representations', 's : l=0  (invariant)', 'v : l=1  (equivariant)']),
+         PALE_B, BLUE)
+    _box(ax, 10.0, ytop, 2.2, 1.25,
+         NL.join(['response heads', MU + ' : l=1',
+                  AL + ' : l=0 ' + OPLUS + ' l=2']), PALE_B, BLUE)
+
+    _box(ax, 4.1, ybot, 2.6, 1.05,
+         NL.join(['Vietoris' + chr(8211) + 'Rips persistence',
+                  'all atoms, no element types']), PALE_O, ORANGE)
+    _box(ax, 7.0, ybot, 2.6, 1.25,
+         NL.join(['z_PH : 130-D, invariant',
+                  'H' + SUB0 + ' / H' + SUB1 + ' Betti curves',
+                  '+ 2 persistence entropies']), PALE_O, ORANGE)
+    _box(ax, 7.0, yfilm, 3.5, 0.95,
+         NL.join(['FiLM: scale + shift on s,  invariant gate on v',
+                  'no mixing between l=0 and l=1']), PALE_O, ORANGE, fs=9.0)
+
+    _arrow(ax, (2.4, ytop), (2.95, ytop), '#6b7280')
+    _arrow(ax, (5.25, ytop), (5.8, ytop), BLUE)
+    _arrow(ax, (8.2, ytop), (8.9, ytop), BLUE)
+    _arrow(ax, (1.3, ytop - 0.53), (1.3, ybot), '#6b7280')
+    _arrow(ax, (1.3, ybot), (2.8, ybot), '#6b7280')
+    _arrow(ax, (5.4, ybot), (5.7, ybot), ORANGE)
+    _arrow(ax, (7.0, ybot + 0.63), (7.0, yfilm - 0.48), ORANGE)
+    _arrow(ax, (7.0, yfilm + 0.48), (7.0, ytop - 0.63), ORANGE)
+
+    NL2 = chr(10)
+    ax.text(7.28, 3.62, 'applied after message passing', fontsize=8.6,
+            color=ORANGE, style='italic', ha='left', va='center')
+    fig.text(0.012, 0.055, NL2.join([
+        'The conditioning path is invariant end to end, so exact E(3) equivariance survives: scalars are rescaled',
+        'and shifted, vectors are scaled by an invariant gate, and nothing is ever mixed across irreducible',
+        'representations. The last FiLM layer is zero-initialized, so at initialization the conditioned model',
+        'reproduces the baseline exactly.']),
+        fontsize=8.6, color='#444', ha='left', va='bottom')
+    ax.text(11.25, 0.30, NL2.join(['topology-OOD split:', 'train ' + chr(8804) + ' 1 ring',
+                                   'test ' + chr(8805) + ' 2 rings']),
+            fontsize=8.6, color='#444', ha='right', va='bottom',
+            bbox=dict(boxstyle='round,pad=0.4', fc='#f5f6f8', ec='#c9ced6'))
+    fig.suptitle('Two paths, joined after the backbone: geometry stays equivariant, topology '
+                 'enters only as invariant gain',
+                 fontsize=12, fontweight='bold', y=0.98)
+    fig.tight_layout(rect=[0, 0.20, 1, 0.93])
+    fig.savefig('assets/fig_method.png', bbox_inches='tight')
+    plt.close(fig)
+    print('wrote assets/fig_method.png')
+
 if __name__ == '__main__':
     import os
     os.makedirs('assets', exist_ok=True)
+    fig_method()
     fig_paired_seeds()
     fig_zph_structure()
     fig_betti_curves()
