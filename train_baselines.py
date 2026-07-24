@@ -180,5 +180,130 @@ def main():
     print('wrote results/baselines.json')
 
 
+def fcnn_polar(seed, cache, tgt, hidden=(512, 256, 128), epochs=120, batch=512, lr=1e-3):
+    """Plain MLP on the same inputs, predicting the full 3x3 polarizability tensor.
+
+    Frobenius error IS rotation-invariant for an equivariant model, since
+    ||R E R^T||_F = ||E||_F, so the rotated column is a fair comparison here.
+    """
+    pos, oh, mask = cache['pos'], cache['onehot'], cache['mask']
+    feats = np.concatenate([pos, oh, mask[:, :, None]], axis=2).reshape(len(pos), -1)
+    tr_i, tr_y, _ = tgt['train']
+    va_i, va_y, _ = tgt['val']
+    te_i, te_y, _ = tgt['test']
+    mu, sd = feats[tr_i].mean(0), feats[tr_i].std(0) + 1e-6
+    prep = lambda I: torch.tensor((feats[I] - mu) / sd, dtype=torch.float32)
+    Xtr, Xva, Xte = prep(tr_i), prep(va_i), prep(te_i)
+    ysc = float(np.abs(tr_y).mean())
+    Ytr = torch.tensor(tr_y / ysc, dtype=torch.float32)
+    Yva = torch.tensor(va_y / ysc, dtype=torch.float32)
+
+    torch.manual_seed(seed)
+    layers, d = [], Xtr.shape[1]
+    for h in hidden:
+        layers += [nn.Linear(d, h), nn.SiLU()]
+        d = h
+    layers += [nn.Linear(d, 9)]
+    net = nn.Sequential(*layers)
+    opt = torch.optim.Adam(net.parameters(), lr=lr)
+    lossf = nn.MSELoss()
+    g = torch.Generator().manual_seed(seed)
+    best, best_state, bad = np.inf, None, 0
+    for ep in range(epochs):
+        net.train()
+        perm = torch.randperm(len(Xtr), generator=g)
+        for i in range(0, len(Xtr), batch):
+            j = perm[i:i + batch]
+            opt.zero_grad(); lossf(net(Xtr[j]), Ytr[j]).backward(); opt.step()
+        net.eval()
+        with torch.no_grad():
+            v = float(lossf(net(Xva), Yva))
+        if v < best - 1e-9:
+            best, bad = v, 0
+            best_state = {k: t.detach().clone() for k, t in net.state_dict().items()}
+        else:
+            bad += 1
+            if bad >= 12:
+                break
+    net.load_state_dict(best_state); net.eval()
+    sym = lambda A: 0.5 * (A.reshape(-1, 3, 3) + A.reshape(-1, 3, 3).transpose(0, 2, 1))
+    with torch.no_grad():
+        P = sym(net(Xte).numpy() * ysc)
+    T = sym(te_y)
+
+    R = rot_matrices(len(te_i), seed + 991)
+    prot = pos[te_i] @ R.transpose(0, 2, 1)
+    frot = np.concatenate([prot, oh[te_i], mask[te_i][:, :, None]], axis=2).reshape(len(te_i), -1)
+    with torch.no_grad():
+        Prot = sym(net(torch.tensor((frot - mu) / sd, dtype=torch.float32)).numpy() * ysc)
+    Trot = np.einsum('nij,njk,nlk->nil', R, T, R)      # A -> R A R^T
+    frob = lambda A, B: float(np.linalg.norm((A - B).reshape(len(A), -1), axis=1).mean())
+    return dict(Frob=frob(P, T), Frob_rotated=frob(Prot, Trot), epochs=ep + 1)
+
+
+def painn_rotation_reference():
+    """The equivariant model under the same rotations, from the frozen exports.
+
+    Predictions rotate with the frame (verified numerically in e3_test.py), so the
+    rotated error is R e for the dipole and R E R^T for the tensor.  Component-wise
+    MAE is an L1 quantity and shifts; the vector L2 and Frobenius norms do not.
+    """
+    out = {}
+    dc, dv, pf = [], [], []
+    for s in SEEDS:
+        z = np.load('probe_cache/dipole_topology_ood_s%d.npz' % s)
+        e = z['test_pred'] - z['test_target']
+        R = rot_matrices(len(e), s + 991)
+        er = np.einsum('nij,nj->ni', R, e)
+        dc.append((float(np.abs(e).mean()), float(np.abs(er).mean())))
+        dv.append((float(np.linalg.norm(e, axis=1).mean()),
+                   float(np.linalg.norm(er, axis=1).mean())))
+        z = np.load('probe_cache/polar_topology_ood_s%d.npz' % s)
+        E = (z['test_pred'] - z['test_target']).reshape(-1, 3, 3)
+        R = rot_matrices(len(E), s + 991)
+        Er = np.einsum('nij,njk,nlk->nil', R, E, R)
+        f = lambda A: float(np.linalg.norm(A.reshape(len(A), -1), axis=1).mean())
+        pf.append((f(E), f(Er)))
+    out['dipole_compMAE'] = dc
+    out['dipole_vecMAE'] = dv
+    out['polar_Frob'] = pf
+    return out
+
+
+def run_polar():
+    """Adds the polarizability reference models to results/baselines.json."""
+    cache = dict(np.load('cache/baseline_inputs.npz'))
+    tgt = load_targets('polar')
+    res = json.load(open('results/baselines.json'))
+    res['fcnn_polar'] = []
+    for s in SEEDS:
+        r = fcnn_polar(s, cache, tgt)
+        res['fcnn_polar'].append(r)
+        print('  FCNN polar seed %d: Frobenius %.4f a.u. | rotated %.4f (%d epochs)'
+              % (s, r['Frob'], r['Frob_rotated'], r['epochs']), flush=True)
+    res['equivariant_polar_Frob'] = []
+    for s in SEEDS:
+        z = np.load('probe_cache/polar_topology_ood_s%d.npz' % s)
+        d = (z['test_pred'] - z['test_target'])
+        res['equivariant_polar_Frob'].append(
+            float(np.linalg.norm(d, axis=1).mean()))
+    tr_i, tr_y, _ = tgt['train']; te_i, te_y, _ = tgt['test']
+    res['mean_predictor_polar_Frob'] = float(
+        np.linalg.norm(tr_y.mean(0)[None, :] - te_y, axis=1).mean())
+    res['painn_rotation'] = painn_rotation_reference()
+    json.dump(res, open('results/baselines.json', 'w'), indent=1)
+    f = np.array([x['Frob'] for x in res['fcnn_polar']])
+    fr = np.array([x['Frob_rotated'] for x in res['fcnn_polar']])
+    print('\n  polarizability Frobenius (a.u.), mean over %d seeds' % len(SEEDS))
+    print('    equivariant PaiNN   %.4f' % np.mean(res['equivariant_polar_Frob']))
+    print('    FCNN                %.4f' % f.mean())
+    print('    FCNN, rotated       %.4f' % fr.mean())
+    print('    naive constant      %.4f' % res['mean_predictor_polar_Frob'])
+    print('wrote results/baselines.json')
+
 if __name__ == '__main__':
-    main()
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == 'polar':
+        run_polar()
+    else:
+        main()

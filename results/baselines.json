@@ -3,26 +3,36 @@
   {
    "compMAE": 0.660246729850769,
    "compMAE_rotated": 0.8662372827529907,
+   "vecMAE": 1.3261057138442993,
+   "vecMAE_rotated": 1.733360767364502,
    "epochs": 59
   },
   {
    "compMAE": 0.6655150055885315,
    "compMAE_rotated": 0.8766013979911804,
+   "vecMAE": 1.335827350616455,
+   "vecMAE_rotated": 1.7536957263946533,
    "epochs": 57
   },
   {
    "compMAE": 0.6467285752296448,
    "compMAE_rotated": 0.8541380763053894,
+   "vecMAE": 1.2987076044082642,
+   "vecMAE_rotated": 1.7091584205627441,
    "epochs": 54
   },
   {
    "compMAE": 0.660211443901062,
    "compMAE_rotated": 0.8636115193367004,
+   "vecMAE": 1.3272143602371216,
+   "vecMAE_rotated": 1.7272034883499146,
    "epochs": 60
   },
   {
    "compMAE": 0.6640000939369202,
    "compMAE_rotated": 0.8841212391853333,
+   "vecMAE": 1.3339166641235352,
+   "vecMAE_rotated": 1.7696151733398438,
    "epochs": 57
   }
  ],

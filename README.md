@@ -1,6 +1,6 @@
 # TopoResponse
 
-**Does persistent homology help an E(3)-equivariant network predict molecular dipole moments and polarizability tensors? A controlled study whose answer, in this configuration, is no.**
+**Does persistent homology help an E(3)-equivariant model predict molecular dipole moments and polarizability tensors? A controlled study with matched negative controls, whose answer in this configuration is no.**
 
 Course project for the Deep Learning School (DLS). Given a molecule's 3D geometry, predict its dipole moment vector (μ, an ℓ=1 vector) and dipole polarizability tensor (α, ℓ=0 ⊕ ℓ=2) with an E(3)-equivariant network, and study whether **persistent-homology features**, drawn from topological data analysis (TDA), add predictive value beyond a strong equivariant model — especially under **distribution shift**. The reported study uses the topology-OOD split; size- and conformation-OOD were scoped but not run.
 

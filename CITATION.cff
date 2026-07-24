@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you refer to this work, please cite it as below."
-title: "TopoResponse: does persistent homology help an E(3)-equivariant model predict molecular dipoles and polarizabilities?"
+title: "TopoResponse: does persistent homology help an E(3)-equivariant model predict molecular dipole moments and polarizability tensors?"
 type: software
 authors:
   - name: "Mindvisio"
