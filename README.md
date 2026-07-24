@@ -37,6 +37,28 @@ The dipole/polarizability study on the topology-OOD split is complete. **The tes
 
 Five seeds per arm (baseline / TDA / matched-capacity random), both properties, paired t-tests on the topology-OOD test set. Raw numbers in `results_5seed.csv`; recompute with `compute_ci.py`.
 
+All methods on the same held-out test set, regenerate with `make_results_table.py`:
+
+<!-- results-table:start -->
+| model | geometric inductive bias | dipole, compMAE (D) | polarizability, Frobenius (a.u.) |
+| --- | --- | --- | --- |
+| PaiNN baseline | E(3)-equivariant | 0.0923 ± 0.0025 | 2.103 ± 0.169 |
+| PaiNN + TDA conditioning | E(3)-equivariant | 0.0936 ± 0.0060 | 2.328 ± 0.137 |
+| PaiNN + matched random features | E(3)-equivariant | 0.0920 ± 0.0046 | 2.384 ± 0.277 |
+| FCNN on raw coordinates | none | 0.6593 ± 0.0074 | -- |
+| the same FCNN, test molecules rotated | none | 0.8689 ± 0.0117 | -- |
+| predicting the training mean | none | 1.2920 | -- |
+
+Lower is better; ± is the sample standard deviation over the five training seeds.
+The equivariant arms differ only in what the conditioning path is fed. Cells marked
+`--` are not defined for that model: the non-equivariant references were run on the
+dipole task only.
+<!-- results-table:end -->
+
+The three equivariant arms sit on top of each other while everything without a geometric
+inductive bias is an order of magnitude behind — which is the comparison the paired tests
+below then quantify.
+
 Dipole is component-wise mean absolute error (compMAE) in debye; polarizability is the mean
 Frobenius error of the 3x3 tensor in atomic units. A **positive** difference means the first
 method is **worse**. Brackets give the paired 95% confidence interval, and the pairing is over
@@ -90,20 +112,10 @@ the dataset's own terms. Cite SQuIRL alongside this repository if you use them.
 
 ## What the geometric inductive bias buys
 
-The comparisons above all live inside the equivariant family. To place them, three
-reference points without that inductive bias, on the same topology-OOD split and in
-the same units.
+The paired tests above compare arms inside the equivariant family. The rows without a
+geometric inductive bias are what put that family in context.
 
-**Dipole vector** (component-wise MAE, debye; mean over 5 seeds):
-
-| model | compMAE (D) |
-| --- | --- |
-| PaiNN, equivariant | **0.0923** |
-| FCNN on raw padded coordinates | 0.6593 |
-| the same FCNN, test molecules rigidly rotated | 0.8689 |
-| predicting the training mean | 1.2920 |
-
-The plain network is 7.1x worse and closes less than half the distance from the
+Those rows are already in the table above. The plain network is 7.1x worse and closes less than half the distance from the
 constant predictor to the equivariant model. The third row measures the missing
 symmetry directly: rotating each test molecule (and its reference dipole with it)
 leaves the task unchanged but costs the FCNN a further 32%, while the equivariant
@@ -152,6 +164,7 @@ pip install -r requirements.txt          # direct pins; requirements-full.txt is
 python compute_ci.py                     # the table above, straight from the committed results_5seed.csv
 PY=python RUN_MLP=1 bash run_residual_probe.sh   # the bonus probes end to end
 python build_baseline_cache.py && python train_baselines.py   # the non-equivariant references
+python make_results_table.py --write      # refresh the results table in this README
 ```
 
 `compute_ci.py` reads the committed CSV, so the headline statistics reproduce from a clean
@@ -183,3 +196,4 @@ the equivariance check and every caveat attached to the result. Regenerating the
 - `make_density_cubes.py` — electron density + fitted charges; `render_hero.py` — the cover image
 - `make_figures.py` — the three result figures above, rebuilt from the committed CSV and z_PH cache
 - `build_baseline_cache.py`, `train_baselines.py` — the non-equivariant references: an FCNN on raw coordinates (scored on rotated copies too) and a tabular model on invariant descriptors
+- `make_results_table.py` — regenerates the results table in this README from the committed CSV and JSON, so the numbers cannot drift
