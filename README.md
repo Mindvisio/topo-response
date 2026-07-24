@@ -88,6 +88,47 @@ the dataset's own terms. Cite SQuIRL alongside this repository if you use them.
 | D / a.u. / a0 | debye (dipole); atomic units (polarizability, in bohr^3); bohr radius |
 | SMILES | a line notation for molecular structure |
 
+## What the geometric inductive bias buys
+
+The comparisons above all live inside the equivariant family. To place them, three
+reference points without that inductive bias, on the same topology-OOD split and in
+the same units.
+
+**Dipole vector** (component-wise MAE, debye; mean over 5 seeds):
+
+| model | compMAE (D) |
+| --- | --- |
+| PaiNN, equivariant | **0.0923** |
+| FCNN on raw padded coordinates | 0.6593 |
+| the same FCNN, test molecules rigidly rotated | 0.8689 |
+| predicting the training mean | 1.2920 |
+
+The plain network is 7.1x worse and closes less than half the distance from the
+constant predictor to the equivariant model. The third row measures the missing
+symmetry directly: rotating each test molecule (and its reference dipole with it)
+leaves the task unchanged but costs the FCNN a further 32%, while the equivariant
+model is provably unaffected - `e3_test.py` puts its rotation error at float32
+round-off. Seed spread is small (0.6467 to 0.6655), so this is a property of the
+architecture rather than of one run.
+
+**Invariant scalars**, where no equivariance is needed at all - a tabular model on
+composition, size, ring count and z_PH:
+
+| target | PaiNN | gradient boosting | training mean |
+| --- | --- | --- | --- |
+| dipole magnitude, \|mu\| (D) | **0.1012** | 1.7098 | 1.2768 |
+| isotropic polarizability (a.u.) | **0.6079** | 3.7325 | 6.0741 |
+
+One entry there deserves a note rather than a footnote: on the shifted test set the
+tabular model predicts the dipole magnitude *worse than the constant*. That is not a
+broken pipeline - on validation, which is drawn from the training regime, the same
+fitted model beats the constant comfortably (1.0138 against 1.3434). It learns real
+structure and then fails to extrapolate across the topology shift, and the target
+distribution moves with it (mean \|mu\| falls from 3.20 D in training to 2.64 D in
+test). Polarizability, which tracks molecular size closely, survives the same shift
+(3.73 against a 6.07 constant). So the split chosen for the main experiment is a
+demanding one in its own right, and geometry is what the dipole actually needs.
+
 ## Is the descriptor empty?
 
 A null result invites the question of whether `z_PH` carries any topological information in
@@ -110,6 +151,7 @@ So the negative result is about what the model could *use*, not about an uninfor
 pip install -r requirements.txt          # direct pins; requirements-full.txt is the exact freeze
 python compute_ci.py                     # the table above, straight from the committed results_5seed.csv
 PY=python RUN_MLP=1 bash run_residual_probe.sh   # the bonus probes end to end
+python build_baseline_cache.py && python train_baselines.py   # the non-equivariant references
 ```
 
 `compute_ci.py` reads the committed CSV, so the headline statistics reproduce from a clean
@@ -140,3 +182,4 @@ the equivariance check and every caveat attached to the result. Regenerating the
 - `index.html` — interactive dipole viewer; `viewer_infer.py`, `make_viewer_manifest.py` — its predictions and provenance
 - `make_density_cubes.py` — electron density + fitted charges; `render_hero.py` — the cover image
 - `make_figures.py` — the three result figures above, rebuilt from the committed CSV and z_PH cache
+- `build_baseline_cache.py`, `train_baselines.py` — the non-equivariant references: an FCNN on raw coordinates (scored on rotated copies too) and a tabular model on invariant descriptors

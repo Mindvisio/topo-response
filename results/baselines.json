@@ -1,0 +1,55 @@
+{
+ "fcnn_dipole": [
+  {
+   "compMAE": 0.660246729850769,
+   "compMAE_rotated": 0.8662372827529907,
+   "epochs": 59
+  },
+  {
+   "compMAE": 0.6655150055885315,
+   "compMAE_rotated": 0.8766013979911804,
+   "epochs": 57
+  },
+  {
+   "compMAE": 0.6467285752296448,
+   "compMAE_rotated": 0.8541380763053894,
+   "epochs": 54
+  },
+  {
+   "compMAE": 0.660211443901062,
+   "compMAE_rotated": 0.8636115193367004,
+   "epochs": 60
+  },
+  {
+   "compMAE": 0.6640000939369202,
+   "compMAE_rotated": 0.8841212391853333,
+   "epochs": 57
+  }
+ ],
+ "equivariant_dipole_compMAE": [
+  0.09013159573078156,
+  0.09435965120792389,
+  0.09219367057085037,
+  0.09526027739048004,
+  0.08958601951599121
+ ],
+ "mean_predictor_dipole_compMAE": 1.2920054197311401,
+ "scalars": {
+  "mu_abs": {
+   "tabular": 1.7097966848663362,
+   "tabular_val": 1.0137542801996762,
+   "mean_predictor_val": 1.3434195518493652,
+   "equivariant": 0.10123755037784576,
+   "mean_predictor": 1.2767868041992188,
+   "unit": "D"
+  },
+  "alpha_iso": {
+   "tabular": 3.732544872404086,
+   "tabular_val": 1.3345911543244113,
+   "mean_predictor_val": 7.877984523773193,
+   "equivariant": 0.607912003993988,
+   "mean_predictor": 6.074138641357422,
+   "unit": "a.u."
+  }
+ }
+}
