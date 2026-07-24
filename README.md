@@ -132,7 +132,7 @@ composition, size, ring count and z_PH:
 
 | target | PaiNN | gradient boosting | training mean |
 | --- | --- | --- | --- |
-| dipole magnitude, \|mu\| (D) | **0.1012** | 1.7098 | 1.2768 |
+| dipole magnitude, \|μ\| (D) | **0.1012** | 1.7098 | 1.2768 |
 | isotropic polarizability (a.u.) | **0.6079** | 3.7325 | 6.0741 |
 
 One entry there deserves a note rather than a footnote: on the shifted test set the
@@ -140,7 +140,7 @@ tabular model predicts the dipole magnitude *worse than the constant*. That is n
 broken pipeline - on validation, which is drawn from the training regime, the same
 fitted model beats the constant comfortably (1.0138 against 1.3434). It learns real
 structure and then fails to extrapolate across the topology shift, and the target
-distribution moves with it (mean \|mu\| falls from 3.20 D in training to 2.64 D in
+distribution moves with it (mean \|μ\| falls from 3.20 D in training to 2.64 D in
 test). Polarizability, which tracks molecular size closely, survives the same shift
 (3.73 against a 6.07 constant). So the split chosen for the main experiment is a
 demanding one in its own right, and geometry is what the dipole actually needs.

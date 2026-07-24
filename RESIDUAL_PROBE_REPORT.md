@@ -34,13 +34,13 @@ topology-OOD test split was **already used by the main study**, so no part of th
 experiment is an untouched-test analysis; it is a post-hoc diagnostic throughout:
 
 - **primary** — the minimal form, and the basis the conclusions rest on.
-  Dipole: `mu_corr = mu_base + a*unit(mu_base)`.
+  Dipole: `μ_corr = μ_base + a*unit(μ_base)`.
   Polar: `A_corr = A_base + a*I + b*Q`, with `Q` the deviatoric part of `A_base`.
 - **secondary (exploratory)** — augmented with the gyration tensor `S` of the
-  centered coordinates. Dipole: `mu_corr = (1+a)*mu_base + b*(S mu_base) +
-  c*(S^2 mu_base)`. Polar: adds `c*S + d*(S Q + Q S)/2`.
+  centered coordinates. Dipole: `μ_corr = (1+a)*μ_base + b*(S μ_base) +
+  c*(S^2 μ_base)`. Polar: adds `c*S + d*(S Q + Q S)/2`.
 
-The primary dipole correction is collinear with `mu_base`, so it can only rescale
+The primary dipole correction is collinear with `μ_base`, so it can only rescale
 the vector, never rotate it; the secondary basis exists so the angular error has a
 way to improve if `z_PH` knows anything about direction. The secondary bases are
 reported as **exploratory only**, because their per-molecule Gram matrices are
@@ -56,7 +56,7 @@ Descriptors and coefficient targets are standardized on train only; the Ridge
 each fitted model is evaluated once on test, and test results are not used for
 fitting, alpha selection or model selection. The intercept is left **unpenalized**, so a large
 `alpha` reduces the probe to an intercept-only fit rather than shrinking the fitted
-mean toward zero. Molecules with `|mu_base| < 0.1 D` (dipole,
+mean toward zero. Molecules with `|μ_base| < 0.1 D` (dipole,
 0.70% of test) or a near-isotropic `A_base` (polar, 4.3%) have the correction
 defined to zero and are reported rather than silently mixed in.
 
