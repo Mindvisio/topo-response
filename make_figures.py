@@ -325,11 +325,12 @@ def _box(ax, cx, cy, w, h, text, fc, ec, fs=9.2, weight='normal'):
             fontweight=weight, zorder=3)
 
 
-def _arrow(ax, xy_from, xy_to, color, style='-|>', lw=1.9, ls='-'):
+def _arrow(ax, xy_from, xy_to, color, style='-|>', lw=1.9, ls='-',
+           shrinkA=2, shrinkB=2):
     from matplotlib.patches import FancyArrowPatch
     ax.add_patch(FancyArrowPatch(xy_from, xy_to, arrowstyle=style, color=color,
                                  linewidth=lw, linestyle=ls, mutation_scale=15,
-                                 shrinkA=2, shrinkB=2, zorder=1))
+                                 shrinkA=shrinkA, shrinkB=shrinkB, zorder=1))
 
 
 def fig_method():
@@ -369,8 +370,10 @@ def fig_method():
     _arrow(ax, (2.4, ytop), (2.95, ytop), '#6b7280')
     _arrow(ax, (5.25, ytop), (5.8, ytop), BLUE)
     _arrow(ax, (8.2, ytop), (8.9, ytop), BLUE)
-    _arrow(ax, (1.3, ytop - 0.53), (1.3, ybot), '#6b7280')
-    _arrow(ax, (1.3, ybot), (2.8, ybot), '#6b7280')
+    # one elbow, not two arrows: the vertical leg carries no head and neither end is
+    # shrunk at the corner, so the two segments meet exactly
+    _arrow(ax, (1.3, ytop - 0.53), (1.3, ybot), '#6b7280', style='-', shrinkB=0)
+    _arrow(ax, (1.3, ybot), (2.8, ybot), '#6b7280', shrinkA=0)
     _arrow(ax, (5.4, ybot), (5.7, ybot), ORANGE)
     _arrow(ax, (7.0, ybot + 0.63), (7.0, yfilm - 0.48), ORANGE)
     _arrow(ax, (7.0, yfilm + 0.48), (7.0, ytop - 0.63), ORANGE)
