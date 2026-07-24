@@ -8,6 +8,7 @@ Three panels that together tell the study's story honestly:
 Run: python make_figures.py   (CPU, ~1 min)
 """
 import json
+import textwrap
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
@@ -205,9 +206,66 @@ def fig_betti_curves():
     print('wrote assets/fig_betti_curves.png')
 
 
+def fig_baselines():
+    """Where the equivariant family sits once models without that bias share the axis."""
+    import csv
+    rows = list(csv.DictReader(open('results_5seed.csv')))
+    b = json.load(open('results/baselines.json'))
+    eq = np.array([float(r['metric_value']) for r in rows
+                   if r['property'] == 'dipole' and r['conditioning'] == 'none'])
+    fc = np.array([x['compMAE'] for x in b['fcnn_dipole']])
+    fr = np.array([x['compMAE_rotated'] for x in b['fcnn_dipole']])
+    mp = b['mean_predictor_dipole_compMAE']
+    labels = ['PaiNN (equivariant)', 'FCNN on raw coordinates',
+              'FCNN, rotated test molecules', 'predicting the training mean']
+    vals = [eq.mean(), fc.mean(), fr.mean(), mp]
+    errs = [eq.std(ddof=1), fc.std(ddof=1), fr.std(ddof=1), 0.0]
+    cols = [BLUE, ORANGE, ORANGE, GREY]
+
+    fig, axes = plt.subplots(1, 2, figsize=(10.4, 4.4),
+                             gridspec_kw={'width_ratios': [1.35, 1]})
+    ax = axes[0]
+    y = np.arange(len(labels))[::-1]
+    ax.barh(y, vals, xerr=errs, color=cols, height=.62, capsize=4,
+            error_kw=dict(lw=1.4, ecolor='#333'))
+    for yy, v in zip(y, vals):
+        ax.text(v + .035, yy, '%.3f' % v, va='center', fontsize=9.5)
+    ax.set_yticks(y)
+    ax.set_yticklabels(labels, fontsize=9)
+    ax.set_xlabel('dipole component-wise MAE (D), lower is better')
+    ax.set_xlim(0, max(vals) * 1.20)
+    ax.set_title('the same task, with and without the geometric bias', loc='left')
+
+    ax = axes[1]
+    for name, pair, c in (('FCNN', (fc.mean(), fr.mean()), ORANGE),
+                          ('PaiNN', (eq.mean(), eq.mean()), BLUE)):
+        ax.plot([0, 1], pair, '-o', color=c, lw=2.4, ms=7, label=name)
+        ax.annotate('%+.0f%%' % (100 * (pair[1] / pair[0] - 1)), xy=(1.05, pair[1]),
+                    color=c, fontsize=10, va='center', fontweight='bold')
+    ax.set_xticks([0, 1])
+    ax.set_xticklabels(['as given', 'rigidly rotated'])
+    ax.set_xlim(-.2, 1.45)
+    ax.set_ylim(0, fr.mean() * 1.28)
+    ax.set_ylabel('dipole compMAE (D)')
+    ax.set_title('rotating the test set', loc='left')
+    ax.legend(loc='center left', frameon=True)
+    note = ('molecule and reference dipole rotate together, so the task is unchanged; '
+            'PaiNN is invariant here by construction, verified to float32 round-off')
+    ax.text(.02, .03, textwrap.fill(note, 46), transform=ax.transAxes,
+            fontsize=8.0, color='#555', va='bottom')
+
+    fig.suptitle('Dropping the geometric inductive bias costs a factor of seven, and leaves '
+                 'the model sensitive to orientation',
+                 fontsize=12, fontweight='bold', y=1.0)
+    fig.tight_layout(rect=[0, 0, 1, .92])
+    fig.savefig('assets/fig_baselines.png', bbox_inches='tight')
+    plt.close(fig)
+    print('wrote assets/fig_baselines.png')
+
 if __name__ == '__main__':
     import os
     os.makedirs('assets', exist_ok=True)
     fig_paired_seeds()
     fig_zph_structure()
     fig_betti_curves()
+    fig_baselines()

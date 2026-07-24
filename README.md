@@ -115,6 +115,8 @@ the dataset's own terms. Cite SQuIRL alongside this repository if you use them.
 The paired tests above compare arms inside the equivariant family. The rows without a
 geometric inductive bias are what put that family in context.
 
+![Left: dipole error for each method, from the equivariant model up to the training-mean predictor. Right: the same test molecules rotated, where the plain network loses another third while the equivariant model is unchanged.](assets/fig_baselines.png)
+
 Those rows are already in the table above. The plain network is 7.1x worse and closes less than half the distance from the
 constant predictor to the equivariant model. The third row measures the missing
 symmetry directly: rotating each test molecule (and its reference dipole with it)
@@ -196,4 +198,4 @@ the equivariance check and every caveat attached to the result. Regenerating the
 - `make_density_cubes.py` — electron density + fitted charges; `render_hero.py` — the cover image
 - `make_figures.py` — the three result figures above, rebuilt from the committed CSV and z_PH cache
 - `build_baseline_cache.py`, `train_baselines.py` — the non-equivariant references: an FCNN on raw coordinates (scored on rotated copies too) and a tabular model on invariant descriptors
-- `make_results_table.py` — regenerates the results table in this README from the committed CSV and JSON, so the numbers cannot drift
+- `make_results_table.py` — regenerates the results table in this README from the committed CSV and JSON, so the numbers cannot drift; `make_figures.py` covers the four figures
