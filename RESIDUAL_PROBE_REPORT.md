@@ -106,6 +106,8 @@ the error worse):
 | secondary | dipole | +0.0015 +/- 0.0028 | +0.0004 p=0.75 | -0.0006 p=0.64 |
 | secondary | polar | +0.037 +/- 0.040 | -0.0005 p=0.89 | -0.0018 p=0.59 |
 
+![Four panels: probe R-squared and the change in physical error, for the Ridge and MLP probes on both properties, with TDA beside the random and shuffled controls. Every R-squared sits at or below zero and every error change is at or above zero.](assets/fig_residual_probes.png)
+
 Holm-adjusted p-values over the declared family of six primary-basis tests
 (threshold 0.0083 for the smallest raw p):
 

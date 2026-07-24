@@ -260,6 +260,62 @@ def fig_baselines():
     plt.close(fig)
     print('wrote assets/fig_baselines.png')
 
+def _probe_stats(path, arm, prop, col):
+    import csv
+    rows = [r for r in csv.DictReader(open(path))
+            if r['property'] == prop and r['basis'] == 'primary' and r['arm'] == arm]
+    per = {}
+    for r in rows:
+        v = r[col]
+        if v not in ('', None):
+            per.setdefault(int(r['seed']), []).append(float(v))
+    vals = np.array([np.mean(per[s]) for s in sorted(per)])
+    return vals.mean(), vals.std(ddof=1)
+
+
+def fig_residual_probes():
+    """Both probes, both readouts: no positive R2 and no useful correction."""
+    paths = {'Ridge': 'results/residual_probe_per_seed.csv',
+             'MLP': 'results/residual_probe_mlp_per_seed.csv'}
+    arms = ['tda', 'random', 'shuffled']
+    probes = [('Ridge', BLUE), ('MLP', ORANGE)]
+    props = [('dipole', 'compMAE (D)'), ('polar', 'Frobenius (a.u.)')]
+    fig, axes = plt.subplots(2, 2, figsize=(10.2, 6.8))
+    x = np.arange(len(arms))
+    wid = .34
+    for row, (prop, unit) in enumerate(props):
+        for col, (metric, title) in enumerate(
+                [('probe_r2_mean', 'probe R2 on held-out coefficients'),
+                 ('delta', 'change in %s vs the frozen baseline' % unit)]):
+            ax = axes[row][col]
+            for k, (name, colr) in enumerate(probes):
+                m = [_probe_stats(paths[name], a, prop, metric) for a in arms]
+                ax.bar(x + (k - .5) * wid, [v[0] for v in m], wid,
+                       yerr=[v[1] for v in m], color=colr, label=name,
+                       error_kw=dict(lw=1.3, ecolor='#2b2b2b'), capsize=0)
+            ax.axhline(0, color='#333', lw=1.3, ls='--', zorder=3)
+            ax.set_xticks(x)
+            ax.set_xticklabels(arms)
+            ax.set_title('%s - %s' % (prop, title), loc='left', fontsize=10)
+            if col == 0:
+                ax.set_ylabel('R2 (test-mean reference)')
+            else:
+                ax.set_ylabel('positive = worse than baseline')
+            if row == 0 and col == 0:
+                ax.legend(frameon=True, fontsize=9)
+
+    fig.suptitle('Neither probe reaches a positive R2, and neither correction lowers the error; '
+                 'TDA does not separate from the controls',
+                 fontsize=12, fontweight='bold', y=1.0)
+    fig.text(.5, .012, 'Bars are means over the 5 baseline seeds, whiskers the sample standard '
+                       'deviation; realizations and initializations are averaged within a seed. '
+                       'Primary basis only.',
+             ha='center', fontsize=8.4, color='#555')
+    fig.tight_layout(rect=[0, .04, 1, .93])
+    fig.savefig('assets/fig_residual_probes.png', bbox_inches='tight')
+    plt.close(fig)
+    print('wrote assets/fig_residual_probes.png')
+
 if __name__ == '__main__':
     import os
     os.makedirs('assets', exist_ok=True)
@@ -267,3 +323,4 @@ if __name__ == '__main__':
     fig_zph_structure()
     fig_betti_curves()
     fig_baselines()
+    fig_residual_probes()
