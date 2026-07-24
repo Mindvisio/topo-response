@@ -96,7 +96,7 @@ the dataset's own terms. Cite SQuIRL alongside this repository if you use them.
 | E(3) | the Euclidean group: rotations, reflections and translations. An *equivariant* model's output transforms the same way as its input under these |
 | irrep | irreducible representation. Scalars (l=0) and vectors (l=1) transform independently; mixing them would break equivariance |
 | TDA / PH | topological data analysis; persistent homology (PH) is the method within TDA used here |
-| H0 / H1 | connected components / independent loops, tracked across the filtration |
+| H₀ / H₁ | connected components / independent loops, tracked across the filtration |
 | OOD | out-of-distribution: the test set is drawn from a different regime than training (here, more rings) |
 | FiLM | feature-wise linear modulation: a learned per-channel scale and shift |
 | PaiNN | Polarizable Atom Interaction Neural Network, the equivariant message-passing backbone |
@@ -109,7 +109,7 @@ the dataset's own terms. Cite SQuIRL alongside this repository if you use them.
 | FCNN | fully connected neural network: a plain multilayer perceptron with no geometric structure built in |
 | RHF | restricted Hartree-Fock, the level of theory behind the figure's electron density |
 | ESP | electrostatic potential, used to color that density |
-| D / a.u. / a0 | debye (dipole); atomic units (polarizability, in bohr^3); bohr radius |
+| D / a.u. / a₀ | debye (dipole); atomic units (polarizability, in bohr³); a₀ is the bohr radius |
 | SMILES | a line notation for molecular structure |
 
 ## What the geometric inductive bias buys
@@ -155,7 +155,7 @@ component orders molecules by ring count on its own.
 ![PCA of z_PH colored by ring count, and the distribution of PC1 per ring count. The
 components separate by topology and a linear read-out recovers ring count with R² = 0.62.](assets/fig_zph_structure.png)
 
-The descriptor is literally the two Betti curves below, sampled on a fixed grid and concatenated with two persistence entropies. H$_1$ counts independent loops, so it responds directly to rings; the curves separate cleanly by ring count.
+The descriptor is literally the two Betti curves below, sampled on a fixed grid and concatenated with two persistence entropies. H₁ counts independent loops, so it responds directly to rings; the curves separate cleanly by ring count.
 
 ![Median H0 and H1 Betti curves by ring count, with interquartile shading. H1 separates clearly by the number of rings.](assets/fig_betti_curves.png)
 
