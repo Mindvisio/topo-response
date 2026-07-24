@@ -19,7 +19,8 @@ Equivariant message passing (PaiNN, MACE, …) already predicts molecular respon
 - **TDA conditioning** (feature-wise linear modulation): z_PH passes through a small network whose output modulates the backbone's *final* representation — a per-channel scale and shift on the invariant (scalar) channels, and a single invariant multiplicative gate on the equivariant (vector) channels. It is applied after the backbone and never mixes irreducible representations (*irreps*), so exact E(3) equivariance is preserved. The last layer is zero-initialized, so at initialization the conditioned model reproduces the baseline exactly.
 - **Splits**: random · topology-OOD (train few-ring → test ring-rich) · group-random (molecules grouped by canonical SMILES, whole groups assigned at random).
 - **Controls run**: shuffled z_PH, matched-capacity random features of equal dimension, and an element-augmented 4D persistence variant. A ring-count baseline, a larger-receptive-field baseline and a separate matched-parameter baseline were scoped but not run.
-- **Metrics**: dipole vector MAE + angular error; polarizability Frobenius, isotropic/anisotropic split, eigenvalue error; exact equivariance check.
+- **Reference models without a geometric bias**: an FCNN on raw padded coordinates predicting the dipole components; a gradient-boosting model on invariant descriptors (composition, size, ring count, z_PH) predicting the two invariant scalars; and the training-mean predictor as a floor. These place the equivariant family rather than compete inside it.
+- **Metrics**: dipole vector MAE + angular error; polarizability Frobenius, isotropic/anisotropic split, eigenvalue error; exact equivariance check. The reference models are scored with the same component-wise MAE, and the tabular one with two invariant scalars, |μ| and the isotropic polarizability. Any model without built-in equivariance is additionally evaluated on a **rigidly rotated copy of the test set** — molecule and reference dipole rotated together, so the task is unchanged and what the rerun measures is orientation sensitivity alone.
 
 ## Interactive visualization
 
@@ -105,6 +106,7 @@ the dataset's own terms. Cite SQuIRL alongside this repository if you use them.
 | R² | fraction of variance explained out of sample; R² ≤ 0 means no better than predicting the mean |
 | CI | confidence interval |
 | MLP | multilayer perceptron |
+| FCNN | fully connected neural network: a plain multilayer perceptron with no geometric structure built in |
 | RHF | restricted Hartree-Fock, the level of theory behind the figure's electron density |
 | ESP | electrostatic potential, used to color that density |
 | D / a.u. / a0 | debye (dipole); atomic units (polarizability, in bohr^3); bohr radius |
