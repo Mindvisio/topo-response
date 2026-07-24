@@ -18,11 +18,11 @@ Equivariant message passing (PaiNN, MACE, …) already predicts molecular respon
 
 
 - **Backbone**: E(3)-equivariant network (SchNetPack PaiNN) with dipole (ℓ=1) and polarizability (ℓ=0⊕ℓ=2) heads.
-- **z_PH descriptor (130-D)**: Vietoris–Rips persistence of the 3D point cloud, over *all* atoms and using *no* element information. Coordinates are centered and divided by the molecular diameter, so every filtration value falls in [0,1] and one fixed 64-point grid is shared by all molecules. The vector concatenates the H₀ and H₁ Betti curves on that grid (64 + 64) with the two persistence entropies.
-- **TDA conditioning** (feature-wise linear modulation): z_PH passes through a small network whose output modulates the backbone's *final* representation — a per-channel scale and shift on the invariant (scalar) channels, and a single invariant multiplicative gate on the equivariant (vector) channels. It is applied after the backbone and never mixes irreducible representations (*irreps*), so exact E(3) equivariance is preserved. The last layer is zero-initialized, so at initialization the conditioned model reproduces the baseline exactly.
+- **z<sub>PH</sub> descriptor (130-D)**: Vietoris–Rips persistence of the 3D point cloud, over *all* atoms and using *no* element information. Coordinates are centered and divided by the molecular diameter, so every filtration value falls in [0,1] and one fixed 64-point grid is shared by all molecules. The vector concatenates the H₀ and H₁ Betti curves on that grid (64 + 64) with the two persistence entropies.
+- **TDA conditioning** (feature-wise linear modulation): z<sub>PH</sub> passes through a small network whose output modulates the backbone's *final* representation — a per-channel scale and shift on the invariant (scalar) channels, and a single invariant multiplicative gate on the equivariant (vector) channels. It is applied after the backbone and never mixes irreducible representations (*irreps*), so exact E(3) equivariance is preserved. The last layer is zero-initialized, so at initialization the conditioned model reproduces the baseline exactly.
 - **Splits**: random · topology-OOD (train few-ring → test ring-rich) · group-random (molecules grouped by canonical SMILES, whole groups assigned at random).
-- **Controls run**: shuffled z_PH, matched-capacity random features of equal dimension, and an element-augmented 4D persistence variant. A ring-count baseline, a larger-receptive-field baseline and a separate matched-parameter baseline were scoped but not run.
-- **Reference models without a geometric bias**: a simple non-equivariant FCNN on centered, zero-padded coordinates with element one-hots, predicting the dipole components; a gradient-boosting model on invariant descriptors (composition, size, ring count, z_PH) predicting the two invariant scalars; and the training-mean predictor as a floor. These place the equivariant family rather than compete inside it.
+- **Controls run**: shuffled z<sub>PH</sub>, matched-capacity random features of equal dimension, and an element-augmented 4D persistence variant. A ring-count baseline, a larger-receptive-field baseline and a separate matched-parameter baseline were scoped but not run.
+- **Reference models without a geometric bias**: a simple non-equivariant FCNN on centered, zero-padded coordinates with element one-hots, predicting the dipole components; a gradient-boosting model on invariant descriptors (composition, size, ring count, z<sub>PH</sub>) predicting the two invariant scalars; and the training-mean predictor as a floor. These place the equivariant family rather than compete inside it.
 - **Metrics**: dipole vector MAE + angular error; polarizability Frobenius, isotropic/anisotropic split, eigenvalue error; exact equivariance check. The reference models are scored with the same component-wise MAE, and the tabular one with two invariant scalars, |μ| and the isotropic polarizability. Any model without built-in equivariance is additionally evaluated on a **rigidly rotated copy of the test set** — molecule and reference dipole rotated together, so the task is unchanged and what the rerun measures is orientation sensitivity alone.
 
 ## Interactive visualization
@@ -49,9 +49,9 @@ All methods on the same held-out test set, regenerate with `make_results_table.p
 | PaiNN baseline | E(3)-equivariant | 0.0923 ± 0.0025 | 2.103 ± 0.169 |
 | PaiNN + TDA conditioning | E(3)-equivariant | 0.0936 ± 0.0060 | 2.328 ± 0.137 |
 | PaiNN + matched random features | E(3)-equivariant | 0.0920 ± 0.0046 | 2.384 ± 0.277 |
-| FCNN on centered padded coordinates | none | 0.6593 ± 0.0074 | -- |
-| the same FCNN, rotated test molecules | none | 0.8689 ± 0.0117 | -- |
-| naive constant (training mean) | none | 1.2920 | -- |
+| FCNN on raw coordinates | none | 0.6593 ± 0.0074 | -- |
+| the same FCNN, test molecules rotated | none | 0.8689 ± 0.0117 | -- |
+| predicting the training mean | none | 1.2920 | -- |
 
 Lower is better; ± is the sample standard deviation over the five training seeds.
 The equivariant arms differ only in what the conditioning path is fed. Cells marked
@@ -78,9 +78,9 @@ the five matched training seeds — not over individual molecules.
 
 ![Per-seed results: five seeds for each arm, with the paired differences and their 95% confidence intervals. No comparison clears zero.](assets/fig_paired_seeds.png)
 
-No advantage of geometric z_PH conditioning through feature-wise linear modulation (FiLM) over the plain equivariant baseline or over the matched-capacity random control was detected. The one nominally significant effect (polarizability, TDA worse than baseline) does not survive multiple-comparison correction over the six reported tests.
+No advantage of geometric z<sub>PH</sub> conditioning through feature-wise linear modulation (FiLM) over the plain equivariant baseline or over the matched-capacity random control was detected. The one nominally significant effect (polarizability, TDA worse than baseline) does not survive multiple-comparison correction over the six reported tests.
 
-This is a qualitative negative result. A separate bonus experiment (`RESIDUAL_PROBE_REPORT.md`) freezes the baseline and asks whether `z_PH` can linearly predict the part of its residual an equivariance-preserving correction may touch; neither that linear probe nor a small nonlinear one detected signal beyond matched random and shuffled controls, consistent with the result above. It does **not** establish that persistent homology is uninformative or equivalent to noise: no equivalence margin was pre-specified, the confidence intervals remain wide, and the finding does not generalize beyond this descriptor, conditioning scheme, dataset and split. `RUN_MANIFEST.md` states the caveats in full.
+This is a qualitative negative result. A separate bonus experiment (`RESIDUAL_PROBE_REPORT.md`) freezes the baseline and asks whether z<sub>PH</sub> can linearly predict the part of its residual an equivariance-preserving correction may touch; neither that linear probe nor a small nonlinear one detected signal beyond matched random and shuffled controls, consistent with the result above. It does **not** establish that persistent homology is uninformative or equivalent to noise: no equivalence margin was pre-specified, the confidence intervals remain wide, and the finding does not generalize beyond this descriptor, conditioning scheme, dataset and split. `RUN_MANIFEST.md` states the caveats in full.
 
 ## What the geometric inductive bias buys
 
@@ -98,7 +98,7 @@ round-off. Seed spread is small (0.6467 to 0.6655), so this is a property of the
 architecture rather than of one run.
 
 **Invariant scalars**, where no equivariance is needed at all - a tabular model on
-composition, size, ring count and z_PH:
+composition, size, ring count and z<sub>PH</sub>:
 
 | target | PaiNN | gradient boosting | training mean |
 | --- | --- | --- | --- |
@@ -117,7 +117,7 @@ demanding one in its own right, and geometry is what the dipole actually needs.
 
 ## Is the descriptor empty?
 
-A null result invites the question of whether `z_PH` carries any topological information in
+A null result invites the question of whether z<sub>PH</sub> carries any topological information in
 the first place. It does. Ring count is linearly decodable from the 130-dimensional vector
 with a held-out R² of 0.62 (mean absolute error 0.57 rings), and the first principal
 component orders molecules by ring count on its own.
@@ -174,7 +174,7 @@ the equivariance check and every caveat attached to the result. Regenerating the
 **Viewer and figures**
 - `index.html` — interactive dipole viewer; `viewer_infer.py`, `make_viewer_manifest.py` — its predictions and provenance
 - `make_density_cubes.py` — electron density + fitted charges; `render_hero.py` — the cover image. Visualization only: neither the density nor the electrostatic potential is used as model input
-- `make_figures.py` — the method schematic and the result figures, rebuilt from the committed CSV and z_PH cache
+- `make_figures.py` — the method schematic and the result figures, rebuilt from the committed CSV and z<sub>PH</sub> cache
 - `build_baseline_cache.py`, `train_baselines.py` — the non-equivariant references: an FCNN on centered padded coordinates (scored on rotated copies too) and a tabular model on invariant descriptors
 - `make_results_table.py` — regenerates the results table in this README from the committed CSV and JSON, so the numbers cannot drift; `make_figures.py` covers the four figures
 
@@ -186,6 +186,7 @@ the equivariance check and every caveat attached to the result. Regenerating the
 | irrep | irreducible representation. Scalars (l=0) and vectors (l=1) transform independently; mixing them would break equivariance |
 | TDA / PH | topological data analysis; persistent homology (PH) is the method within TDA used here |
 | H₀ / H₁ | connected components / independent loops, tracked across the filtration |
+| z<sub>PH</sub> | the 130-dimensional persistence descriptor used throughout: the H₀ and H₁ Betti curves on a fixed 64-point grid, plus their two persistence entropies |
 | OOD | out-of-distribution: the test set is drawn from a different regime than training (here, more rings) |
 | FiLM | feature-wise linear modulation: a learned per-channel scale and shift |
 | PaiNN | Polarizable Atom Interaction Neural Network, the equivariant message-passing backbone |
